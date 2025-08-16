@@ -1,5 +1,7 @@
 package com.eris.fintrack.api.auth;
 
+import com.eris.fintrack.api.auth.dto.AuthResponse;
+import com.eris.fintrack.api.auth.dto.LoginRequest;
 import com.eris.fintrack.api.auth.dto.RegisterRequest;
 import com.eris.fintrack.application.service.AuthService;
 import com.eris.fintrack.domain.User;
@@ -23,5 +25,10 @@ public class AuthController {
     public ResponseEntity<String> registerUser(@Valid @RequestBody RegisterRequest registerRequest) {
         authService.registerUser(registerRequest);
         return ResponseEntity.status(HttpStatus.CREATED).body("User registered successfully!");
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
+        return ResponseEntity.ok(authService.login(loginRequest));
     }
 }
