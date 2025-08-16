@@ -59,7 +59,7 @@ The system will be built following the principles of **Clean Architecture** (or 
 ### 2.3. Project Structure
 
 ```
-com.yourcompany.fintrack
+com.eris.fintrack
 ├─ api/                 # Controllers, DTOs, Mappers
 │  ├─ auth/
 │  ├─ account/
