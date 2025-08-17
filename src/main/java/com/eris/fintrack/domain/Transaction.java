@@ -51,6 +51,9 @@ public class Transaction {
     @Column(name = "description")
     private String description;
 
+    @Column(name = "transfer_id")
+    private UUID transferId;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

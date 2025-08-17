@@ -4,6 +4,7 @@ import com.eris.fintrack.api.common.ApiResponse;
 import com.eris.fintrack.api.common.PaginatedResponse;
 import com.eris.fintrack.api.mapper.TransactionMapper;
 import com.eris.fintrack.api.transaction.dto.CreateTransactionRequest;
+import com.eris.fintrack.api.transaction.dto.CreateTransferRequest;
 import com.eris.fintrack.api.transaction.dto.TransactionResponse;
 import com.eris.fintrack.api.transaction.dto.UpdateTransactionRequest;
 import com.eris.fintrack.application.service.TransactionService;
@@ -79,5 +80,12 @@ public class TransactionController {
 
         Transaction updatedTransaction = transactionService.updateTransaction(id, request);
         return ResponseEntity.ok(ApiResponse.success(transactionMapper.toDto(updatedTransaction)));
+    }
+
+    @PostMapping("/transfer")
+    public ResponseEntity<ApiResponse<Void>> createTransfer(@Valid @RequestBody CreateTransferRequest request) {
+        transactionService.createTransfer(request);
+
+        return new ResponseEntity<>(ApiResponse.success(null), HttpStatus.NO_CONTENT);
     }
 }

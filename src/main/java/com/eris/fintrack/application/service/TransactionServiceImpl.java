@@ -1,8 +1,10 @@
 package com.eris.fintrack.application.service;
 
+import com.eris.fintrack.api.exception.BadRequestException;
 import com.eris.fintrack.api.exception.ForbiddenException;
 import com.eris.fintrack.api.exception.ResourceNotFoundException;
 import com.eris.fintrack.api.transaction.dto.CreateTransactionRequest;
+import com.eris.fintrack.api.transaction.dto.CreateTransferRequest;
 import com.eris.fintrack.api.transaction.dto.UpdateTransactionRequest;
 import com.eris.fintrack.domain.Account;
 import com.eris.fintrack.domain.Category;
@@ -161,5 +163,60 @@ public class TransactionServiceImpl implements TransactionService {
         transaction.setDescription(request.getDescription());
 
         return transactionRepository.save(transaction);
+    }
+
+    @Override
+    @Transactional
+    public void createTransfer(CreateTransferRequest request) {
+        User currentUser = userContextService.getCurrentUser();
+
+        if (request.getFromAccountId().equals(request.getToAccountId())) {
+            throw new BadRequestException("Source and destination accounts cannot be the same.");
+        }
+
+        Account fromAccount = accountRepository.findById(request.getFromAccountId())
+                .orElseThrow(() -> new ResourceNotFoundException("Source account not found"));
+        if (!fromAccount.getUser().getId().equals(currentUser.getId())) {
+            throw new ForbiddenException("Access Denied: Source account does not belong to user");
+        }
+
+        Account toAccount = accountRepository.findById(request.getToAccountId())
+                .orElseThrow(() -> new ResourceNotFoundException("Destination account not found"));
+        if (!toAccount.getUser().getId().equals(currentUser.getId())) {
+            throw new ForbiddenException("Access Denied: Destination account does not belong to user");
+        }
+
+        fromAccount.setBalance(fromAccount.getBalance().subtract(request.getAmount()));
+        toAccount.setBalance(toAccount.getBalance().add(request.getAmount()));
+
+        accountRepository.save(fromAccount);
+        accountRepository.save(toAccount);
+
+        UUID transferId = UUID.randomUUID();
+
+        Transaction expenseTransaction = Transaction.builder()
+                .user(currentUser)
+                .account(fromAccount)
+                .type(TransactionType.EXPENSE)
+                .amount(request.getAmount())
+                .transactionDate(request.getTransactionDate())
+                .description(request.getDescription())
+                .transferId(transferId)
+                .category(null)
+                .build();
+
+        Transaction incomeTransaction = Transaction.builder()
+                .user(currentUser)
+                .account(toAccount)
+                .type(TransactionType.INCOME)
+                .amount(request.getAmount())
+                .transactionDate(request.getTransactionDate())
+                .description(request.getDescription())
+                .transferId(transferId)
+                .category(null)
+                .build();
+
+        transactionRepository.save(expenseTransaction);
+        transactionRepository.save(incomeTransaction);
     }
 }
