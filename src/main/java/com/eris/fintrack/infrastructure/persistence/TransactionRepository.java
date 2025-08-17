@@ -1,6 +1,7 @@
 package com.eris.fintrack.infrastructure.persistence;
 
 import com.eris.fintrack.domain.Transaction;
+import com.eris.fintrack.domain.enums.TransactionType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -23,6 +24,16 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     BigDecimal sumExpensesByUserIdAndCategoryAndDateRange(
             @Param("userId") UUID userId,
             @Param("categoryId") UUID categoryId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
+
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t WHERE t.user.id = :userId " +
+            "AND t.type = :type " +
+            "AND t.transactionDate BETWEEN :startDate AND :endDate")
+    BigDecimal sumAmountByUserIdAndTypeAndDateRange(
+            @Param("userId") UUID userId,
+            @Param("type") TransactionType type,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
     );
