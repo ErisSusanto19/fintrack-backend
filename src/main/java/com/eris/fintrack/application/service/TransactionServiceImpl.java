@@ -6,12 +6,10 @@ import com.eris.fintrack.api.exception.ResourceNotFoundException;
 import com.eris.fintrack.api.transaction.dto.CreateTransactionRequest;
 import com.eris.fintrack.api.transaction.dto.CreateTransferRequest;
 import com.eris.fintrack.api.transaction.dto.UpdateTransactionRequest;
-import com.eris.fintrack.domain.Account;
-import com.eris.fintrack.domain.Category;
-import com.eris.fintrack.domain.Transaction;
-import com.eris.fintrack.domain.User;
+import com.eris.fintrack.domain.*;
 import com.eris.fintrack.domain.enums.TransactionType;
 import com.eris.fintrack.infrastructure.persistence.AccountRepository;
+import com.eris.fintrack.infrastructure.persistence.BudgetRepository;
 import com.eris.fintrack.infrastructure.persistence.CategoryRepository;
 import com.eris.fintrack.infrastructure.persistence.TransactionRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +19,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.UUID;
 
 @Service
@@ -31,6 +31,7 @@ public class TransactionServiceImpl implements TransactionService {
     private final AccountRepository accountRepository;
     private final CategoryRepository categoryRepository;
     private final UserContextService userContextService;
+    private final BudgetRepository budgetRepository;
 
     @Override
     @Transactional
@@ -54,6 +55,7 @@ public class TransactionServiceImpl implements TransactionService {
         }
 
         if (type == TransactionType.EXPENSE) {
+            validateBudget(currentUser, category, request.getTransactionDate(), request.getAmount());
             account.setBalance(account.getBalance().subtract(request.getAmount()));
         } else if (type == TransactionType.INCOME) {
             account.setBalance(account.getBalance().add(request.getAmount()));
@@ -218,5 +220,37 @@ public class TransactionServiceImpl implements TransactionService {
 
         transactionRepository.save(expenseTransaction);
         transactionRepository.save(incomeTransaction);
+    }
+
+    private void validateBudget(User user, Category category, LocalDate transactionDate, BigDecimal newExpenseAmount) {
+        int year = transactionDate.getYear();
+        int month = transactionDate.getMonthValue();
+
+        if (category != null) {
+            budgetRepository.findByUserIdAndCategoryIdAndYearAndMonth(user.getId(), category.getId(), year, month)
+                    .ifPresent(budget -> checkBudgetExceeded(user.getId(), category.getId(), transactionDate, newExpenseAmount, budget));
+        }
+
+        budgetRepository.findByUserIdAndCategoryIdAndYearAndMonth(user.getId(), null, year, month)
+                .ifPresent(budget -> checkBudgetExceeded(user.getId(), null, transactionDate, newExpenseAmount, budget));
+    }
+
+    private void checkBudgetExceeded(UUID userId, UUID categoryId, LocalDate transactionDate, BigDecimal newExpenseAmount, Budget budget) {
+        LocalDate startDate = YearMonth.from(transactionDate).atDay(1);
+        LocalDate endDate = YearMonth.from(transactionDate).atEndOfMonth();
+
+        BigDecimal currentExpenses = transactionRepository.sumExpensesByUserIdAndCategoryAndDateRange(
+                userId, categoryId, startDate, endDate);
+
+        BigDecimal projectedExpenses = currentExpenses.add(newExpenseAmount);
+
+        if (projectedExpenses.compareTo(budget.getAmountLimit()) > 0) {
+            String categoryName = (categoryId != null) ? budget.getCategory().getName() : "Overall";
+            throw new BadRequestException(
+                    "This transaction exceeds your budget for '" + categoryName + "'. " +
+                            "Limit: " + budget.getAmountLimit() + ", Current Spent: " + currentExpenses +
+                            ", After this transaction: " + projectedExpenses
+            );
+        }
     }
 }

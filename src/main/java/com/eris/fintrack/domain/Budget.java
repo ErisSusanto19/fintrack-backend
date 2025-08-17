@@ -17,7 +17,6 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-
 @Table(name = "budgets", uniqueConstraints = {
         @UniqueConstraint(columnNames = {"user_id", "category_id", "month", "year"})
 })
