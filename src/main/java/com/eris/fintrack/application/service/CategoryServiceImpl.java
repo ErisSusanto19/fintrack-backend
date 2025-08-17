@@ -4,10 +4,7 @@ import com.eris.fintrack.api.category.dto.CreateUpdateCategoryRequest;
 import com.eris.fintrack.domain.Category;
 import com.eris.fintrack.domain.User;
 import com.eris.fintrack.infrastructure.persistence.CategoryRepository;
-import com.eris.fintrack.infrastructure.persistence.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,12 +16,12 @@ import java.util.UUID;
 public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
-    private final UserRepository userRepository;
+    private final UserContextService userContextService;
 
     @Override
     @Transactional
     public Category createCategory(CreateUpdateCategoryRequest request) {
-        User currentUser = getCurrentUser();
+        User currentUser = userContextService.getCurrentUser();
 
         Category category = Category.builder()
                 .user(currentUser)
@@ -38,14 +35,14 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     @Transactional(readOnly = true)
     public List<Category> getAllCategoriesForCurrentUser() {
-        User currentUser = getCurrentUser();
+        User currentUser = userContextService.getCurrentUser();
         return categoryRepository.findByUserId(currentUser.getId());
     }
 
     @Override
     @Transactional
     public void deleteCategoryById(UUID categoryId) {
-        User currentUser = getCurrentUser();
+        User currentUser = userContextService.getCurrentUser();
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new RuntimeException("Category not found"));
 
@@ -54,17 +51,5 @@ public class CategoryServiceImpl implements CategoryService {
         }
 
         categoryRepository.delete(category);
-    }
-
-    private User getCurrentUser() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        String username;
-        if (principal instanceof UserDetails) {
-            username = ((UserDetails) principal).getUsername();
-        } else {
-            username = principal.toString();
-        }
-        return userRepository.findByEmail(username)
-                .orElseThrow(() -> new RuntimeException("Authenticated user not found in database"));
     }
 }

@@ -6,8 +6,6 @@ import com.eris.fintrack.domain.User;
 import com.eris.fintrack.infrastructure.persistence.AccountRepository;
 import com.eris.fintrack.infrastructure.persistence.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,12 +17,12 @@ import java.util.UUID;
 public class AccountServiceImpl implements AccountService {
 
     private final AccountRepository accountRepository;
-    private final UserRepository userRepository;
+    private final UserContextService userContextService;
 
     @Override
     @Transactional
     public Account createAccount(CreateUpdateAccountRequest request) {
-        User currentUser = getCurrentUser();
+        User currentUser = userContextService.getCurrentUser();
 
         Account account = Account.builder()
                 .user(currentUser)
@@ -39,14 +37,14 @@ public class AccountServiceImpl implements AccountService {
     @Override
     @Transactional(readOnly = true)
     public List<Account> getAllAccountsForCurrentUser() {
-        User currentUser = getCurrentUser();
+        User currentUser = userContextService.getCurrentUser();
         return accountRepository.findByUserId(currentUser.getId());
     }
 
     @Override
     @Transactional(readOnly = true)
     public Account getAccountById(UUID accountId) {
-        User currentUser = getCurrentUser();
+        User currentUser = userContextService.getCurrentUser();
         Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new RuntimeException("Account not found"));
 
@@ -61,17 +59,5 @@ public class AccountServiceImpl implements AccountService {
     public void deleteAccountById(UUID accountId) {
         Account accountToDelete = getAccountById(accountId);
         accountRepository.delete(accountToDelete);
-    }
-
-    private User getCurrentUser() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        String username;
-        if (principal instanceof UserDetails) {
-            username = ((UserDetails) principal).getUsername();
-        } else {
-            username = principal.toString();
-        }
-        return userRepository.findByEmail(username)
-                .orElseThrow(() -> new RuntimeException("Authenticated user not found in database"));
     }
 }
