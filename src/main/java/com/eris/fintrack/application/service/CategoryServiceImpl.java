@@ -3,6 +3,7 @@ package com.eris.fintrack.application.service;
 import com.eris.fintrack.api.category.dto.CreateUpdateCategoryRequest;
 import com.eris.fintrack.domain.Category;
 import com.eris.fintrack.domain.User;
+import com.eris.fintrack.domain.enums.TransactionType;
 import com.eris.fintrack.infrastructure.persistence.CategoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,11 +23,12 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional
     public Category createCategory(CreateUpdateCategoryRequest request) {
         User currentUser = userContextService.getCurrentUser();
+        TransactionType type = TransactionType.valueOf(request.getType().toUpperCase());
 
         Category category = Category.builder()
                 .user(currentUser)
                 .name(request.getName())
-                .type(request.getType().toUpperCase())
+                .type(type)
                 .build();
 
         return categoryRepository.save(category);

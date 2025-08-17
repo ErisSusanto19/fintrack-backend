@@ -1,5 +1,7 @@
 package com.eris.fintrack.api.account.dto;
 
+import com.eris.fintrack.api.validation.EnumValidator;
+import com.eris.fintrack.domain.enums.AccountType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -10,7 +12,8 @@ public class CreateUpdateAccountRequest {
     @NotBlank(message = "Account name is required")
     private String name;
 
-    @NotBlank(message = "Account type is required")
+    @NotBlank(message = "Transaction type is required")
+    @EnumValidator(enumClass = AccountType.class, message = "Invalid type. Allowed values: {enumValues}")
     private String type;
 
     @NotNull(message = "Initial balance is required")

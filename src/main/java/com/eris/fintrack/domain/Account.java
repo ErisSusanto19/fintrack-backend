@@ -1,5 +1,6 @@
 package com.eris.fintrack.domain;
 
+import com.eris.fintrack.domain.enums.AccountType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -31,8 +32,9 @@ public class Account {
     @Column(name = "name", nullable = false)
     private String name;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false)
-    private String type; //CASH, BANK, EWALLET
+    private AccountType type; //CASH, BANK, EWALLET
 
     @Column(name = "balance", nullable = false, precision = 19, scale = 4)
     private BigDecimal balance;

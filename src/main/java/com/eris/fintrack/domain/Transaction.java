@@ -1,5 +1,6 @@
 package com.eris.fintrack.domain;
 
+import com.eris.fintrack.domain.enums.TransactionType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -37,8 +38,9 @@ public class Transaction {
     @JoinColumn(name = "category_id")
     private Category category;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false)
-    private String type; // INCOME atau EXPENSE
+    private TransactionType type; // INCOME atau EXPENSE
 
     @Column(name = "amount", nullable = false, precision = 19, scale = 4)
     private BigDecimal amount;

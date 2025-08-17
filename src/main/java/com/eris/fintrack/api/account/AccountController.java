@@ -2,6 +2,8 @@ package com.eris.fintrack.api.account;
 
 import com.eris.fintrack.api.account.dto.AccountResponse;
 import com.eris.fintrack.api.account.dto.CreateUpdateAccountRequest;
+import com.eris.fintrack.api.common.ApiResponse;
+import com.eris.fintrack.api.mapper.AccountMapper;
 import com.eris.fintrack.application.service.AccountService;
 import com.eris.fintrack.domain.Account;
 import jakarta.validation.Valid;
@@ -20,40 +22,33 @@ import java.util.stream.Collectors;
 public class AccountController {
 
     private final AccountService accountService;
+    private final AccountMapper accountMapper;
 
     @PostMapping
-    public ResponseEntity<AccountResponse> createAccount(@Valid @RequestBody CreateUpdateAccountRequest request) {
+    public ResponseEntity<ApiResponse<AccountResponse>> createAccount(@Valid @RequestBody CreateUpdateAccountRequest request) {
         Account createdAccount = accountService.createAccount(request);
-        return new ResponseEntity<>(mapToResponse(createdAccount), HttpStatus.CREATED);
+        AccountResponse responseDto = accountMapper.toDto(createdAccount);
+        return new ResponseEntity<>(ApiResponse.success(responseDto), HttpStatus.CREATED);
     }
 
     @GetMapping
-    public ResponseEntity<List<AccountResponse>> getAllAccounts() {
+    public ResponseEntity<ApiResponse<List<AccountResponse>>> getAllAccounts() {
         List<Account> accounts = accountService.getAllAccountsForCurrentUser();
         List<AccountResponse> response = accounts.stream()
-                .map(this::mapToResponse)
+                .map(accountMapper::toDto)
                 .collect(Collectors.toList());
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<AccountResponse> getAccountById(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<AccountResponse>> getAccountById(@PathVariable UUID id) {
         Account account = accountService.getAccountById(id);
-        return ResponseEntity.ok(mapToResponse(account));
+        return ResponseEntity.ok(ApiResponse.success(accountMapper.toDto(account)));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteAccount(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<Void>> deleteAccount(@PathVariable UUID id) {
         accountService.deleteAccountById(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    private AccountResponse mapToResponse(Account account) {
-        return AccountResponse.builder()
-                .id(account.getId())
-                .name(account.getName())
-                .type(account.getType())
-                .balance(account.getBalance())
-                .build();
+        return new ResponseEntity<>(ApiResponse.success(null), HttpStatus.NO_CONTENT);
     }
 }

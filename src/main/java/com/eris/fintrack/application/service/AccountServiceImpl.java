@@ -3,6 +3,7 @@ package com.eris.fintrack.application.service;
 import com.eris.fintrack.api.account.dto.CreateUpdateAccountRequest;
 import com.eris.fintrack.domain.Account;
 import com.eris.fintrack.domain.User;
+import com.eris.fintrack.domain.enums.AccountType;
 import com.eris.fintrack.infrastructure.persistence.AccountRepository;
 import com.eris.fintrack.infrastructure.persistence.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,11 +24,12 @@ public class AccountServiceImpl implements AccountService {
     @Transactional
     public Account createAccount(CreateUpdateAccountRequest request) {
         User currentUser = userContextService.getCurrentUser();
+        AccountType type = AccountType.valueOf(request.getType().toUpperCase());
 
         Account account = Account.builder()
                 .user(currentUser)
                 .name(request.getName())
-                .type(request.getType())
+                .type(type)
                 .balance(request.getBalance())
                 .build();
 

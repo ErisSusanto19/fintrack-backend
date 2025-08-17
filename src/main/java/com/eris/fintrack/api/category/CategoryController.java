@@ -2,6 +2,8 @@ package com.eris.fintrack.api.category;
 
 import com.eris.fintrack.api.category.dto.CategoryResponse;
 import com.eris.fintrack.api.category.dto.CreateUpdateCategoryRequest;
+import com.eris.fintrack.api.common.ApiResponse;
+import com.eris.fintrack.api.mapper.CategoryMapper;
 import com.eris.fintrack.application.service.CategoryService;
 import com.eris.fintrack.domain.Category;
 import jakarta.validation.Valid;
@@ -20,33 +22,27 @@ import java.util.stream.Collectors;
 public class CategoryController {
 
     private final CategoryService categoryService;
+    private final CategoryMapper categoryMapper;
 
     @PostMapping
-    public ResponseEntity<CategoryResponse> createCategory(@Valid @RequestBody CreateUpdateCategoryRequest request) {
+    public ResponseEntity<ApiResponse<CategoryResponse>> createCategory(@Valid @RequestBody CreateUpdateCategoryRequest request) {
         Category createdCategory = categoryService.createCategory(request);
-        return new ResponseEntity<>(mapToResponse(createdCategory), HttpStatus.CREATED);
+        CategoryResponse responseDto = categoryMapper.toDto(createdCategory);
+        return new ResponseEntity<>(ApiResponse.success(responseDto), HttpStatus.CREATED);
     }
 
     @GetMapping
-    public ResponseEntity<List<CategoryResponse>> getAllCategories() {
+    public ResponseEntity<ApiResponse<List<CategoryResponse>>> getAllCategories() {
         List<Category> categories = categoryService.getAllCategoriesForCurrentUser();
         List<CategoryResponse> response = categories.stream()
-                .map(this::mapToResponse)
+                .map(categoryMapper::toDto)
                 .collect(Collectors.toList());
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteCategory(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<Void>> deleteCategory(@PathVariable UUID id) {
         categoryService.deleteCategoryById(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    private CategoryResponse mapToResponse(Category category) {
-        return CategoryResponse.builder()
-                .id(category.getId())
-                .name(category.getName())
-                .type(category.getType())
-                .build();
+        return new ResponseEntity<>(ApiResponse.success(null), HttpStatus.NO_CONTENT);
     }
 }

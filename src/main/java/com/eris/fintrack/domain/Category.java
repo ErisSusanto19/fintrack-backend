@@ -1,5 +1,6 @@
 package com.eris.fintrack.domain;
 
+import com.eris.fintrack.domain.enums.TransactionType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -30,8 +31,9 @@ public class Category {
     @Column(name = "name", nullable = false)
     private String name;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false)
-    private String type; //INCOME atau EXPENSE
+    private TransactionType type; //INCOME atau EXPENSE
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

@@ -1,5 +1,7 @@
 package com.eris.fintrack.api.transaction.dto;
 
+import com.eris.fintrack.api.validation.EnumValidator;
+import com.eris.fintrack.domain.enums.TransactionType;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -16,7 +18,8 @@ public class CreateTransactionRequest {
 
     private UUID categoryId;
 
-    @NotBlank(message = "Transaction type is required (INCOME or EXPENSE)")
+    @NotBlank(message = "Transaction type is required")
+    @EnumValidator(enumClass = TransactionType.class, message = "Type must be INCOME or EXPENSE")
     private String type;
 
     @NotNull(message = "Amount is required")

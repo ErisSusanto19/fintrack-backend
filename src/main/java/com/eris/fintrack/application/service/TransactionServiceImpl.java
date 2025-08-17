@@ -5,10 +5,13 @@ import com.eris.fintrack.domain.Account;
 import com.eris.fintrack.domain.Category;
 import com.eris.fintrack.domain.Transaction;
 import com.eris.fintrack.domain.User;
+import com.eris.fintrack.domain.enums.TransactionType;
 import com.eris.fintrack.infrastructure.persistence.AccountRepository;
 import com.eris.fintrack.infrastructure.persistence.CategoryRepository;
 import com.eris.fintrack.infrastructure.persistence.TransactionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,7 +33,7 @@ public class TransactionServiceImpl implements TransactionService {
     @Transactional
     public Transaction createTransaction(CreateTransactionRequest request) {
         User currentUser = userContextService.getCurrentUser();
-        String type = request.getType().toUpperCase();
+        TransactionType type = TransactionType.valueOf(request.getType().toUpperCase());
 
         Account account = accountRepository.findById(request.getAccountId())
                 .orElseThrow(() -> new RuntimeException("Account not found"));
@@ -47,13 +50,12 @@ public class TransactionServiceImpl implements TransactionService {
             }
         }
 
-        if (Objects.equals(type, "EXPENSE")) {
+        if (type == TransactionType.EXPENSE) {
             account.setBalance(account.getBalance().subtract(request.getAmount()));
-        } else if (Objects.equals(type, "INCOME")) {
+        } else if (type == TransactionType.INCOME) {
             account.setBalance(account.getBalance().add(request.getAmount()));
-        } else {
-            throw new IllegalArgumentException("Invalid transaction type: " + type);
         }
+
         accountRepository.save(account);
 
         Transaction transaction = Transaction.builder()
@@ -71,9 +73,9 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<Transaction> getTransactionsForCurrentUser() {
+    public Page<Transaction> getTransactionsForCurrentUser(Pageable pageable) {
         User currentUser = userContextService.getCurrentUser();
-        return transactionRepository.findByUserId(currentUser.getId());
+        return transactionRepository.findByUserId(currentUser.getId(), pageable);
     }
 
     @Override
@@ -88,9 +90,9 @@ public class TransactionServiceImpl implements TransactionService {
         }
 
         Account account = transaction.getAccount();
-        if (Objects.equals(transaction.getType(), "EXPENSE")) {
+        if (transaction.getType() == TransactionType.EXPENSE) {
             account.setBalance(account.getBalance().add(transaction.getAmount()));
-        } else if (Objects.equals(transaction.getType(), "INCOME")) {
+        } else if (transaction.getType() == TransactionType.INCOME) {
             account.setBalance(account.getBalance().subtract(transaction.getAmount()));
         }
         accountRepository.save(account);
