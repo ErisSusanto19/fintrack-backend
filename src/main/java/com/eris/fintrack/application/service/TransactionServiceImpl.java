@@ -1,5 +1,7 @@
 package com.eris.fintrack.application.service;
 
+import com.eris.fintrack.api.exception.ForbiddenException;
+import com.eris.fintrack.api.exception.ResourceNotFoundException;
 import com.eris.fintrack.api.transaction.dto.CreateTransactionRequest;
 import com.eris.fintrack.domain.Account;
 import com.eris.fintrack.domain.Category;
@@ -14,10 +16,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -36,17 +34,17 @@ public class TransactionServiceImpl implements TransactionService {
         TransactionType type = TransactionType.valueOf(request.getType().toUpperCase());
 
         Account account = accountRepository.findById(request.getAccountId())
-                .orElseThrow(() -> new RuntimeException("Account not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Account with id " + request.getAccountId() + " not found"));
         if (!account.getUser().getId().equals(currentUser.getId())) {
-            throw new SecurityException("Access Denied: Account does not belong to user");
+            throw new ForbiddenException("Access Denied: Account does not belong to user");
         }
 
         Category category = null;
         if (request.getCategoryId() != null) {
             category = categoryRepository.findById(request.getCategoryId())
-                    .orElseThrow(() -> new RuntimeException("Category not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Category with id " + request.getCategoryId() + " not found"));
             if (!category.getUser().getId().equals(currentUser.getId())) {
-                throw new SecurityException("Access Denied: Category does not belong to user");
+                throw new ForbiddenException("Access Denied: Category does not belong to user");
             }
         }
 
@@ -83,10 +81,10 @@ public class TransactionServiceImpl implements TransactionService {
     public void deleteTransaction(UUID transactionId) {
         User currentUser = userContextService.getCurrentUser();
         Transaction transaction = transactionRepository.findById(transactionId)
-                .orElseThrow(() -> new RuntimeException("Transaction not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction with id " + transactionId + " not found"));
 
         if (!transaction.getUser().getId().equals(currentUser.getId())) {
-            throw new SecurityException("Access Denied to delete this transaction");
+            throw new ForbiddenException("Access Denied to delete this transaction");
         }
 
         Account account = transaction.getAccount();

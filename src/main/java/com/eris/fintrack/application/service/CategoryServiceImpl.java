@@ -1,6 +1,8 @@
 package com.eris.fintrack.application.service;
 
 import com.eris.fintrack.api.category.dto.CreateUpdateCategoryRequest;
+import com.eris.fintrack.api.exception.ForbiddenException;
+import com.eris.fintrack.api.exception.ResourceNotFoundException;
 import com.eris.fintrack.domain.Category;
 import com.eris.fintrack.domain.User;
 import com.eris.fintrack.domain.enums.TransactionType;
@@ -46,10 +48,10 @@ public class CategoryServiceImpl implements CategoryService {
     public void deleteCategoryById(UUID categoryId) {
         User currentUser = userContextService.getCurrentUser();
         Category category = categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
 
         if (!category.getUser().getId().equals(currentUser.getId())) {
-            throw new SecurityException("Access Denied: You do not own this category");
+            throw new ForbiddenException("Access Denied: You do not own this category");
         }
 
         categoryRepository.delete(category);

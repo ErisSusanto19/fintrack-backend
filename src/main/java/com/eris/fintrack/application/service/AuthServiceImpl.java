@@ -3,6 +3,8 @@ package com.eris.fintrack.application.service;
 import com.eris.fintrack.api.auth.dto.AuthResponse;
 import com.eris.fintrack.api.auth.dto.LoginRequest;
 import com.eris.fintrack.api.auth.dto.RegisterRequest;
+import com.eris.fintrack.api.exception.BadRequestException;
+import com.eris.fintrack.api.exception.ResourceNotFoundException;
 import com.eris.fintrack.domain.Role;
 import com.eris.fintrack.domain.User;
 import com.eris.fintrack.infrastructure.persistence.RoleRepository;
@@ -36,11 +38,11 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public AuthResponse registerUser(RegisterRequest registerRequest) {
         if (userRepository.findByEmail(registerRequest.getEmail()).isPresent()) {
-            throw new IllegalArgumentException("Email already in use");
+            throw new BadRequestException("Email already in use");
         }
 
         Role userRole = roleRepository.findByName("ROLE_USER")
-                .orElseThrow(() -> new IllegalStateException("Default role not found."));
+                .orElseThrow(() -> new ResourceNotFoundException("Default role not found."));
 
         User user = User.builder()
                 .fullName(registerRequest.getFullName())

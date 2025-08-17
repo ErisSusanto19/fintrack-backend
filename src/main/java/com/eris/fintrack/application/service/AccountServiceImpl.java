@@ -1,6 +1,8 @@
 package com.eris.fintrack.application.service;
 
 import com.eris.fintrack.api.account.dto.CreateUpdateAccountRequest;
+import com.eris.fintrack.api.exception.ForbiddenException;
+import com.eris.fintrack.api.exception.ResourceNotFoundException;
 import com.eris.fintrack.domain.Account;
 import com.eris.fintrack.domain.User;
 import com.eris.fintrack.domain.enums.AccountType;
@@ -48,10 +50,10 @@ public class AccountServiceImpl implements AccountService {
     public Account getAccountById(UUID accountId) {
         User currentUser = userContextService.getCurrentUser();
         Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new RuntimeException("Account not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Account with id " + accountId + " not found"));
 
         if (!account.getUser().getId().equals(currentUser.getId())) {
-            throw new SecurityException("Access Denied: You do not own this account");
+            throw new ForbiddenException("Access Denied: You do not own this account");
         }
         return account;
     }
