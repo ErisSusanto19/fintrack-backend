@@ -3,6 +3,7 @@ package com.eris.fintrack.application.service;
 import com.eris.fintrack.api.exception.ForbiddenException;
 import com.eris.fintrack.api.exception.ResourceNotFoundException;
 import com.eris.fintrack.api.transaction.dto.CreateTransactionRequest;
+import com.eris.fintrack.api.transaction.dto.UpdateTransactionRequest;
 import com.eris.fintrack.domain.Account;
 import com.eris.fintrack.domain.Category;
 import com.eris.fintrack.domain.Transaction;
@@ -16,6 +17,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Service
@@ -96,5 +99,67 @@ public class TransactionServiceImpl implements TransactionService {
         accountRepository.save(account);
 
         transactionRepository.delete(transaction);
+    }
+
+    @Override
+    @Transactional
+    public Transaction updateTransaction(UUID transactionId, UpdateTransactionRequest request) {
+        User currentUser = userContextService.getCurrentUser();
+
+        Transaction transaction = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction with id " + transactionId + " not found"));
+
+        if (!transaction.getUser().getId().equals(currentUser.getId())) {
+            throw new ForbiddenException("Access Denied to update this transaction");
+        }
+
+        Account originalAccount = transaction.getAccount();
+        BigDecimal originalAmount = transaction.getAmount();
+        TransactionType originalType = transaction.getType();
+
+        if (originalType == TransactionType.EXPENSE) {
+            originalAccount.setBalance(originalAccount.getBalance().add(originalAmount));
+        } else {
+            originalAccount.setBalance(originalAccount.getBalance().subtract(originalAmount));
+        }
+
+        Account destinationAccount;
+        if (originalAccount.getId().equals(request.getAccountId())) {
+            destinationAccount = originalAccount;
+        } else {
+            destinationAccount = accountRepository.findById(request.getAccountId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Destination account with id " + request.getAccountId() + " not found"));
+            if (!destinationAccount.getUser().getId().equals(currentUser.getId())) {
+                throw new ForbiddenException("Access Denied: Destination account does not belong to user");
+            }
+
+            accountRepository.save(originalAccount);
+        }
+
+        TransactionType newType = TransactionType.valueOf(request.getType().toUpperCase());
+        if (newType == TransactionType.EXPENSE) {
+            destinationAccount.setBalance(destinationAccount.getBalance().subtract(request.getAmount()));
+        } else {
+            destinationAccount.setBalance(destinationAccount.getBalance().add(request.getAmount()));
+        }
+        accountRepository.save(destinationAccount);
+
+        Category newCategory = null;
+        if (request.getCategoryId() != null) {
+            newCategory = categoryRepository.findById(request.getCategoryId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Category with id " + request.getCategoryId() + " not found"));
+            if (!newCategory.getUser().getId().equals(currentUser.getId())) {
+                throw new ForbiddenException("Access Denied: Category does not belong to user");
+            }
+        }
+
+        transaction.setAccount(destinationAccount);
+        transaction.setCategory(newCategory);
+        transaction.setType(newType);
+        transaction.setAmount(request.getAmount());
+        transaction.setTransactionDate(request.getTransactionDate());
+        transaction.setDescription(request.getDescription());
+
+        return transactionRepository.save(transaction);
     }
 }

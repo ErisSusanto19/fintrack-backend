@@ -5,6 +5,7 @@ import com.eris.fintrack.api.common.PaginatedResponse;
 import com.eris.fintrack.api.mapper.TransactionMapper;
 import com.eris.fintrack.api.transaction.dto.CreateTransactionRequest;
 import com.eris.fintrack.api.transaction.dto.TransactionResponse;
+import com.eris.fintrack.api.transaction.dto.UpdateTransactionRequest;
 import com.eris.fintrack.application.service.TransactionService;
 import com.eris.fintrack.domain.Transaction;
 import jakarta.validation.Valid;
@@ -69,5 +70,14 @@ public class TransactionController {
     public ResponseEntity<ApiResponse<Void>> deleteTransaction(@PathVariable UUID id) {
         transactionService.deleteTransaction(id);
         return new ResponseEntity<>(ApiResponse.success(null), HttpStatus.NO_CONTENT);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<TransactionResponse>> updateTransaction(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateTransactionRequest request) {
+
+        Transaction updatedTransaction = transactionService.updateTransaction(id, request);
+        return ResponseEntity.ok(ApiResponse.success(transactionMapper.toDto(updatedTransaction)));
     }
 }
