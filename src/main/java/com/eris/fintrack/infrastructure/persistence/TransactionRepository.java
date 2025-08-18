@@ -1,5 +1,6 @@
 package com.eris.fintrack.infrastructure.persistence;
 
+import com.eris.fintrack.api.report.dto.CategoryBreakdownRow;
 import com.eris.fintrack.domain.Transaction;
 import com.eris.fintrack.domain.enums.TransactionType;
 import org.springframework.data.domain.Page;
@@ -34,6 +35,23 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     BigDecimal sumAmountByUserIdAndTypeAndDateRange(
             @Param("userId") UUID userId,
             @Param("type") TransactionType type,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
+
+    @Query("SELECT new com.eris.fintrack.api.report.dto.CategoryBreakdownRow(" +
+            "   t.category.id, " +
+            "   t.category.name, " +
+            "   SUM(t.amount)) " +
+            "FROM Transaction t " +
+            "WHERE t.user.id = :userId " +
+            "AND t.type = 'EXPENSE' " +
+            "AND t.category IS NOT NULL " +
+            "AND t.transactionDate BETWEEN :startDate AND :endDate " +
+            "GROUP BY t.category.id, t.category.name " +
+            "ORDER BY SUM(t.amount) DESC")
+    List<CategoryBreakdownRow> getCategoryBreakdown(
+            @Param("userId") UUID userId,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
     );
