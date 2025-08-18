@@ -1,4 +1,4 @@
-package com.eris.fintrack.application.service;
+package com.eris.fintrack.application.service.implementation;
 
 import com.eris.fintrack.api.exception.BadRequestException;
 import com.eris.fintrack.api.exception.ForbiddenException;
@@ -6,6 +6,7 @@ import com.eris.fintrack.api.exception.ResourceNotFoundException;
 import com.eris.fintrack.api.transaction.dto.CreateTransactionRequest;
 import com.eris.fintrack.api.transaction.dto.CreateTransferRequest;
 import com.eris.fintrack.api.transaction.dto.UpdateTransactionRequest;
+import com.eris.fintrack.application.service.TransactionService;
 import com.eris.fintrack.domain.*;
 import com.eris.fintrack.domain.enums.TransactionType;
 import com.eris.fintrack.infrastructure.persistence.AccountRepository;

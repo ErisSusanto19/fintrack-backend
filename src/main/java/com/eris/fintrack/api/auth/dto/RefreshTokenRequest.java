@@ -1,11 +1,10 @@
 package com.eris.fintrack.api.auth.dto;
 
-import lombok.Builder;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
-@Builder
-public class AuthResponse {
-    private String accessToken;
+public class RefreshTokenRequest {
+    @NotBlank
     private String refreshToken;
 }

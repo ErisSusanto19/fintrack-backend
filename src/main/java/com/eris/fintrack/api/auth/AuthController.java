@@ -2,6 +2,7 @@ package com.eris.fintrack.api.auth;
 
 import com.eris.fintrack.api.auth.dto.AuthResponse;
 import com.eris.fintrack.api.auth.dto.LoginRequest;
+import com.eris.fintrack.api.auth.dto.RefreshTokenRequest;
 import com.eris.fintrack.api.auth.dto.RegisterRequest;
 import com.eris.fintrack.api.common.ApiResponse;
 import com.eris.fintrack.application.service.AuthService;
@@ -31,5 +32,16 @@ public class AuthController {
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest loginRequest) {
         AuthResponse authResponse = authService.login(loginRequest);
         return ResponseEntity.ok(ApiResponse.success(authResponse));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<ApiResponse<AuthResponse>> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(authService.refreshToken(request)));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<String>> logout(@Valid @RequestBody RefreshTokenRequest request) {
+        authService.logout(request);
+        return ResponseEntity.ok(ApiResponse.success("Logged out successfully!"));
     }
 }

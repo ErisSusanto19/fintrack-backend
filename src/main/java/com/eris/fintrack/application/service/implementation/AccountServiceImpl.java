@@ -1,13 +1,13 @@
-package com.eris.fintrack.application.service;
+package com.eris.fintrack.application.service.implementation;
 
 import com.eris.fintrack.api.account.dto.CreateUpdateAccountRequest;
 import com.eris.fintrack.api.exception.ForbiddenException;
 import com.eris.fintrack.api.exception.ResourceNotFoundException;
+import com.eris.fintrack.application.service.AccountService;
 import com.eris.fintrack.domain.Account;
 import com.eris.fintrack.domain.User;
 import com.eris.fintrack.domain.enums.AccountType;
 import com.eris.fintrack.infrastructure.persistence.AccountRepository;
-import com.eris.fintrack.infrastructure.persistence.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

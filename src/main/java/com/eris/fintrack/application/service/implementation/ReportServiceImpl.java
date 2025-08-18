@@ -1,6 +1,7 @@
-package com.eris.fintrack.application.service;
+package com.eris.fintrack.application.service.implementation;
 
 import com.eris.fintrack.api.report.dto.ReportOverviewResponse;
+import com.eris.fintrack.application.service.ReportService;
 import com.eris.fintrack.domain.User;
 import com.eris.fintrack.domain.enums.TransactionType;
 import com.eris.fintrack.infrastructure.persistence.TransactionRepository;

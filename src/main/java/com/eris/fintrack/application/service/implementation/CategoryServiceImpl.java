@@ -1,8 +1,9 @@
-package com.eris.fintrack.application.service;
+package com.eris.fintrack.application.service.implementation;
 
 import com.eris.fintrack.api.category.dto.CreateUpdateCategoryRequest;
 import com.eris.fintrack.api.exception.ForbiddenException;
 import com.eris.fintrack.api.exception.ResourceNotFoundException;
+import com.eris.fintrack.application.service.CategoryService;
 import com.eris.fintrack.domain.Category;
 import com.eris.fintrack.domain.User;
 import com.eris.fintrack.domain.enums.TransactionType;

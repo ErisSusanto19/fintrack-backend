@@ -1,10 +1,14 @@
-package com.eris.fintrack.application.service;
+package com.eris.fintrack.application.service.implementation;
 
 import com.eris.fintrack.api.auth.dto.AuthResponse;
 import com.eris.fintrack.api.auth.dto.LoginRequest;
+import com.eris.fintrack.api.auth.dto.RefreshTokenRequest;
 import com.eris.fintrack.api.auth.dto.RegisterRequest;
 import com.eris.fintrack.api.exception.BadRequestException;
 import com.eris.fintrack.api.exception.ResourceNotFoundException;
+import com.eris.fintrack.application.service.AuthService;
+import com.eris.fintrack.application.service.RefreshTokenService;
+import com.eris.fintrack.domain.RefreshToken;
 import com.eris.fintrack.domain.Role;
 import com.eris.fintrack.domain.User;
 import com.eris.fintrack.infrastructure.persistence.RoleRepository;
@@ -33,6 +37,7 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final UserDetailsService userDetailsService;
     private final RoleRepository roleRepository;
+    private final RefreshTokenService refreshTokenService;
 
     @Override
     @Transactional
@@ -62,9 +67,11 @@ public class AuthServiceImpl implements AuthService {
         );
 
         var jwtToken = jwtService.generateToken(userDetails);
+        var refreshToken = refreshTokenService.createRefreshToken(registerRequest.getEmail());
 
         return AuthResponse.builder()
                 .accessToken(jwtToken)
+                .refreshToken(refreshToken.getToken())
                 .build();
     }
 
@@ -79,9 +86,32 @@ public class AuthServiceImpl implements AuthService {
 
         var userDetails = userDetailsService.loadUserByUsername(loginRequest.getEmail());
         var jwtToken = jwtService.generateToken(userDetails);
+        var refreshToken = refreshTokenService.createRefreshToken(loginRequest.getEmail());
 
         return AuthResponse.builder()
                 .accessToken(jwtToken)
+                .refreshToken(refreshToken.getToken())
                 .build();
+    }
+
+    @Override
+    public AuthResponse refreshToken(RefreshTokenRequest request) {
+        return refreshTokenService.findByToken(request.getRefreshToken())
+                .map(refreshTokenService::verifyExpiration)
+                .map(RefreshToken::getUser)
+                .map(user -> {
+                    var userDetails = userDetailsService.loadUserByUsername(user.getEmail());
+                    String accessToken = jwtService.generateToken(userDetails);
+                    return AuthResponse.builder()
+                            .accessToken(accessToken)
+                            .refreshToken(request.getRefreshToken())
+                            .build();
+                })
+                .orElseThrow(() -> new BadRequestException("Refresh token is not in database!"));
+    }
+
+    @Override
+    public void logout(RefreshTokenRequest request) {
+        refreshTokenService.deleteByToken(request.getRefreshToken());
     }
 }

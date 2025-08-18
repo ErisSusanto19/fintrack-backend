@@ -1,9 +1,10 @@
-package com.eris.fintrack.application.service;
+package com.eris.fintrack.application.service.implementation;
 
 import com.eris.fintrack.api.budget.dto.CreateUpdateBudgetRequest;
 import com.eris.fintrack.api.exception.BadRequestException;
 import com.eris.fintrack.api.exception.ForbiddenException;
 import com.eris.fintrack.api.exception.ResourceNotFoundException;
+import com.eris.fintrack.application.service.BudgetService;
 import com.eris.fintrack.domain.Budget;
 import com.eris.fintrack.domain.Category;
 import com.eris.fintrack.domain.User;
