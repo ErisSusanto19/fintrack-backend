@@ -1,12 +1,10 @@
-package com.eris.fintrack.application.service;
+package com.eris.fintrack.application.service.implementation;
 
 import com.eris.fintrack.api.exception.BadRequestException;
 import com.eris.fintrack.api.exception.ForbiddenException;
 import com.eris.fintrack.api.exception.ResourceNotFoundException;
 import com.eris.fintrack.api.transaction.dto.CreateTransactionRequest;
 import com.eris.fintrack.api.transaction.dto.UpdateTransactionRequest;
-import com.eris.fintrack.application.service.implementation.TransactionServiceImpl;
-import com.eris.fintrack.application.service.implementation.UserContextService;
 import com.eris.fintrack.domain.Account;
 import com.eris.fintrack.domain.Category;
 import com.eris.fintrack.domain.Transaction;

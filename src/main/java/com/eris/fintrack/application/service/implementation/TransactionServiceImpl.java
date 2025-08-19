@@ -38,43 +38,13 @@ public class TransactionServiceImpl implements TransactionService {
     @Transactional
     public Transaction createTransaction(CreateTransactionRequest request) {
         User currentUser = userContextService.getCurrentUser();
-        TransactionType type = TransactionType.valueOf(request.getType().toUpperCase());
+        return createTransactionForUser(request, currentUser);
+    }
 
-        Account account = accountRepository.findById(request.getAccountId())
-                .orElseThrow(() -> new ResourceNotFoundException("Account with id " + request.getAccountId() + " not found"));
-        if (!account.getUser().getId().equals(currentUser.getId())) {
-            throw new ForbiddenException("Access Denied: Account does not belong to user");
-        }
-
-        Category category = null;
-        if (request.getCategoryId() != null) {
-            category = categoryRepository.findById(request.getCategoryId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Category with id " + request.getCategoryId() + " not found"));
-            if (!category.getUser().getId().equals(currentUser.getId())) {
-                throw new ForbiddenException("Access Denied: Category does not belong to user");
-            }
-        }
-
-        if (type == TransactionType.EXPENSE) {
-            validateBudget(currentUser, category, request.getTransactionDate(), request.getAmount());
-            account.setBalance(account.getBalance().subtract(request.getAmount()));
-        } else if (type == TransactionType.INCOME) {
-            account.setBalance(account.getBalance().add(request.getAmount()));
-        }
-
-        accountRepository.save(account);
-
-        Transaction transaction = Transaction.builder()
-                .user(currentUser)
-                .account(account)
-                .category(category)
-                .type(type)
-                .amount(request.getAmount())
-                .transactionDate(request.getTransactionDate())
-                .description(request.getDescription())
-                .build();
-
-        return transactionRepository.save(transaction);
+    @Override
+    @Transactional
+    public Transaction createTransactionFromScheduler(CreateTransactionRequest request, User user) {
+        return createTransactionForUser(request, user);
     }
 
     @Override
@@ -221,6 +191,46 @@ public class TransactionServiceImpl implements TransactionService {
 
         transactionRepository.save(expenseTransaction);
         transactionRepository.save(incomeTransaction);
+    }
+
+    private Transaction createTransactionForUser(CreateTransactionRequest request, User user){
+        TransactionType type = TransactionType.valueOf(request.getType().toUpperCase());
+
+        Account account = accountRepository.findById(request.getAccountId())
+                .orElseThrow(() -> new ResourceNotFoundException("Account with id " + request.getAccountId() + " not found"));
+        if (!account.getUser().getId().equals(user.getId())) {
+            throw new ForbiddenException("Access Denied: Account does not belong to user");
+        }
+
+        Category category = null;
+        if (request.getCategoryId() != null) {
+            category = categoryRepository.findById(request.getCategoryId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Category with id " + request.getCategoryId() + " not found"));
+            if (!category.getUser().getId().equals(user.getId())) {
+                throw new ForbiddenException("Access Denied: Category does not belong to user");
+            }
+        }
+
+        if (type == TransactionType.EXPENSE) {
+            validateBudget(user, category, request.getTransactionDate(), request.getAmount());
+            account.setBalance(account.getBalance().subtract(request.getAmount()));
+        } else if (type == TransactionType.INCOME) {
+            account.setBalance(account.getBalance().add(request.getAmount()));
+        }
+
+        accountRepository.save(account);
+
+        Transaction transaction = Transaction.builder()
+                .user(user)
+                .account(account)
+                .category(category)
+                .type(type)
+                .amount(request.getAmount())
+                .transactionDate(request.getTransactionDate())
+                .description(request.getDescription())
+                .build();
+
+        return transactionRepository.save(transaction);
     }
 
     private void validateBudget(User user, Category category, LocalDate transactionDate, BigDecimal newExpenseAmount) {
