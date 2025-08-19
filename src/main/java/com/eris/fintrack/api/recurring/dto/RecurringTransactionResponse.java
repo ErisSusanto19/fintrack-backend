@@ -1,5 +1,6 @@
 package com.eris.fintrack.api.recurring.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Data;
 
@@ -21,5 +22,6 @@ public class RecurringTransactionResponse {
     private LocalDate startDate;
     private LocalDate endDate;
     private String description;
+    @JsonProperty("isActive")
     private boolean isActive;
 }

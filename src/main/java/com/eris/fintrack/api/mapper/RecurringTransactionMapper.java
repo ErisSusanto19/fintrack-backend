@@ -13,5 +13,6 @@ public interface RecurringTransactionMapper {
     @Mapping(source = "category.id", target = "categoryId")
     @Mapping(source = "category.name", target = "categoryName")
     @Mapping(source = "type", target = "type")
+    @Mapping(source = "active", target = "isActive")
     RecurringTransactionResponse toDto(RecurringTransaction recurringTransaction);
 }
