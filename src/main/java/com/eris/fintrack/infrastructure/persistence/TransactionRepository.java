@@ -1,5 +1,6 @@
 package com.eris.fintrack.infrastructure.persistence;
 
+import com.eris.fintrack.api.report.dto.CashFlowTrendItem;
 import com.eris.fintrack.api.report.dto.CategoryBreakdownRow;
 import com.eris.fintrack.domain.Transaction;
 import com.eris.fintrack.domain.enums.TransactionType;
@@ -51,6 +52,21 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             "GROUP BY t.category.id, t.category.name " +
             "ORDER BY SUM(t.amount) DESC")
     List<CategoryBreakdownRow> getCategoryBreakdown(
+            @Param("userId") UUID userId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
+
+    @Query("SELECT new com.eris.fintrack.api.report.dto.CashFlowTrendItem(" +
+            "   t.transactionDate, " +
+            "   SUM(CASE WHEN t.type = 'INCOME' THEN t.amount ELSE 0 END), " +
+            "   SUM(CASE WHEN t.type = 'EXPENSE' THEN t.amount ELSE 0 END)) " +
+            "FROM Transaction t " +
+            "WHERE t.user.id = :userId " +
+            "AND t.transactionDate BETWEEN :startDate AND :endDate " +
+            "GROUP BY t.transactionDate " +
+            "ORDER BY t.transactionDate ASC")
+    List<CashFlowTrendItem> getCashFlowTrend(
             @Param("userId") UUID userId,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate

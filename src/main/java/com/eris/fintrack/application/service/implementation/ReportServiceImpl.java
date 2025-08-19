@@ -1,5 +1,6 @@
 package com.eris.fintrack.application.service.implementation;
 
+import com.eris.fintrack.api.report.dto.CashFlowTrendItem;
 import com.eris.fintrack.api.report.dto.CategoryBreakdownResponse;
 import com.eris.fintrack.api.report.dto.CategoryBreakdownRow;
 import com.eris.fintrack.api.report.dto.ReportOverviewResponse;
@@ -16,6 +17,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -88,6 +90,22 @@ public class ReportServiceImpl implements ReportService {
                     .percentage(percentage.doubleValue())
                     .build();
         }).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<CashFlowTrendItem> getCashFlowTrend(LocalDate startDate, LocalDate endDate) {
+        User currentUser = userContextService.getCurrentUser();
+
+        List<CashFlowTrendItem> resultsFromDb = transactionRepository.getCashFlowTrend(
+                currentUser.getId(), startDate, endDate);
+
+        Map<LocalDate, CashFlowTrendItem> resultsMap = resultsFromDb.stream()
+                .collect(Collectors.toMap(CashFlowTrendItem::date, item -> item));
+
+        return startDate.datesUntil(endDate.plusDays(1))
+                .map(date -> resultsMap.getOrDefault(date,
+                        new CashFlowTrendItem(date, BigDecimal.ZERO, BigDecimal.ZERO)))
+                .collect(Collectors.toList());
     }
 
 }
