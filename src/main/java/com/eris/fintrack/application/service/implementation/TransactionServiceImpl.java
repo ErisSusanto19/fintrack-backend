@@ -14,6 +14,9 @@ import com.eris.fintrack.infrastructure.persistence.BudgetRepository;
 import com.eris.fintrack.infrastructure.persistence.CategoryRepository;
 import com.eris.fintrack.infrastructure.persistence.TransactionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -33,10 +36,12 @@ public class TransactionServiceImpl implements TransactionService {
     private final CategoryRepository categoryRepository;
     private final UserContextService userContextService;
     private final BudgetRepository budgetRepository;
+    private final CacheManager cacheManager;
 
     @Override
     @Transactional
     public Transaction createTransaction(CreateTransactionRequest request) {
+        clearReportCaches();
         User currentUser = userContextService.getCurrentUser();
         return createTransactionForUser(request, currentUser);
     }
@@ -44,6 +49,7 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     @Transactional
     public Transaction createTransactionFromScheduler(CreateTransactionRequest request, User user) {
+        clearReportCaches();
         return createTransactionForUser(request, user);
     }
 
@@ -57,6 +63,7 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     @Transactional
     public void deleteTransaction(UUID transactionId) {
+        clearReportCaches();
         User currentUser = userContextService.getCurrentUser();
         Transaction transaction = transactionRepository.findById(transactionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction with id " + transactionId + " not found"));
@@ -79,6 +86,7 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     @Transactional
     public Transaction updateTransaction(UUID transactionId, UpdateTransactionRequest request) {
+        clearReportCaches();
         User currentUser = userContextService.getCurrentUser();
 
         Transaction transaction = transactionRepository.findById(transactionId)
@@ -141,6 +149,7 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     @Transactional
     public void createTransfer(CreateTransferRequest request) {
+        clearReportCaches();
         User currentUser = userContextService.getCurrentUser();
 
         if (request.getFromAccountId().equals(request.getToAccountId())) {
@@ -262,6 +271,14 @@ public class TransactionServiceImpl implements TransactionService {
                             "Limit: " + budget.getAmountLimit() + ", Current Spent: " + currentExpenses +
                             ", After this transaction: " + projectedExpenses
             );
+        }
+    }
+
+    private void clearReportCaches() {
+        Cache cache = cacheManager.getCache("categoryBreakdown");
+        if (cache != null) {
+            cache.clear();
+            System.out.println("--- CLEARED CATEGORY BREAKDOWN CACHE ---");
         }
     }
 }

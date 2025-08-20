@@ -9,6 +9,9 @@ import com.eris.fintrack.domain.User;
 import com.eris.fintrack.domain.enums.TransactionType;
 import com.eris.fintrack.infrastructure.persistence.TransactionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -26,6 +29,7 @@ public class ReportServiceImpl implements ReportService {
 
     private final TransactionRepository transactionRepository;
     private final UserContextService userContextService;
+    private final CacheManager cacheManager;
 
     @Override
     public ReportOverviewResponse getMonthlyOverview(int year, int month) {
@@ -59,7 +63,20 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     public List<CategoryBreakdownResponse> getCategoryBreakdown(int year, int month) {
+
         User currentUser = userContextService.getCurrentUser();
+
+        String cacheKey = currentUser.getId().toString() + "_" + year + "-" + month;
+
+        Cache cache = cacheManager.getCache("categoryBreakdown");
+
+        if (cache != null && cache.get(cacheKey) != null) {
+            System.out.println("--- FETCHING CATEGORY BREAKDOWN FROM CACHE ---");
+            return (List<CategoryBreakdownResponse>) cache.get(cacheKey).get();
+        }
+
+        System.out.println("--- EXECUTING HEAVY DATABASE QUERY FOR CATEGORY BREAKDOWN ---");
+
         LocalDate startDate = YearMonth.of(year, month).atDay(1);
         LocalDate endDate = YearMonth.of(year, month).atEndOfMonth();
 
@@ -78,7 +95,7 @@ public class ReportServiceImpl implements ReportService {
             return Collections.emptyList();
         }
 
-        return rows.stream().map(row -> {
+        List<CategoryBreakdownResponse> response = rows.stream().map(row -> {
             BigDecimal percentage = row.totalAmount()
                     .multiply(new BigDecimal("100"))
                     .divide(totalExpense, 2, RoundingMode.HALF_UP);
@@ -90,6 +107,12 @@ public class ReportServiceImpl implements ReportService {
                     .percentage(percentage.doubleValue())
                     .build();
         }).collect(Collectors.toList());
+
+        if (cache != null) {
+            cache.put(cacheKey, response);
+        }
+
+        return response;
     }
 
     @Override
