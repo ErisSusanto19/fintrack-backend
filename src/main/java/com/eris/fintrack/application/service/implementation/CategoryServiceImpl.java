@@ -45,6 +45,19 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Category findById(UUID categoryId) {
+        User currentUser = userContextService.getCurrentUser();
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
+
+        if (!category.getUser().getId().equals(currentUser.getId())) {
+            throw new ForbiddenException("Access Denied: You do not own this category");
+        }
+        return category;
+    }
+
+    @Override
     @Transactional
     public void deleteCategoryById(UUID categoryId) {
         User currentUser = userContextService.getCurrentUser();

@@ -9,5 +9,6 @@ import java.util.UUID;
 public interface BudgetService {
     Budget createBudget(CreateUpdateBudgetRequest request);
     List<Budget> getBudgets(int year, int month);
+    Budget findById(UUID budgetId);
     void deleteBudget(UUID budgetId);
 }

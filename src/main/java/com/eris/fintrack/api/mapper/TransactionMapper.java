@@ -5,7 +5,7 @@ import com.eris.fintrack.domain.Transaction;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = {AttachmentMapper.class})
 public interface TransactionMapper {
 
     @Mapping(source = "account.id", target = "accountId")
@@ -13,5 +13,6 @@ public interface TransactionMapper {
     @Mapping(source = "category.id", target = "categoryId")
     @Mapping(source = "category.name", target = "categoryName")
     @Mapping(target = "type", expression = "java(transaction.getType().name())")
+
     TransactionResponse toDto(Transaction transaction);
 }

@@ -1,13 +1,16 @@
 package com.eris.fintrack.api.transaction;
 
+import com.eris.fintrack.api.attachment.dto.AttachmentResponse;
 import com.eris.fintrack.api.common.ApiResponse;
 import com.eris.fintrack.api.common.PaginatedResponse;
+import com.eris.fintrack.api.mapper.AttachmentMapper;
 import com.eris.fintrack.api.mapper.TransactionMapper;
 import com.eris.fintrack.api.transaction.dto.CreateTransactionRequest;
 import com.eris.fintrack.api.transaction.dto.CreateTransferRequest;
 import com.eris.fintrack.api.transaction.dto.TransactionResponse;
 import com.eris.fintrack.api.transaction.dto.UpdateTransactionRequest;
 import com.eris.fintrack.application.service.TransactionService;
+import com.eris.fintrack.domain.Attachment;
 import com.eris.fintrack.domain.Transaction;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,8 +19,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -30,6 +35,7 @@ public class TransactionController {
 
     private final TransactionService transactionService;
     private final TransactionMapper transactionMapper;
+    private final AttachmentMapper attachmentMapper;
 
     @PostMapping
     public ResponseEntity<ApiResponse<TransactionResponse>> createTransaction(@Valid @RequestBody CreateTransactionRequest request) {
@@ -67,6 +73,12 @@ public class TransactionController {
         return ResponseEntity.ok(ApiResponse.success(paginatedResponse));
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<TransactionResponse>> findTransactionById(@PathVariable UUID id) {
+        Transaction transaction = transactionService.findById(id);
+        return ResponseEntity.ok(ApiResponse.success(transactionMapper.toDto(transaction)));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteTransaction(@PathVariable UUID id) {
         transactionService.deleteTransaction(id);
@@ -86,6 +98,28 @@ public class TransactionController {
     public ResponseEntity<ApiResponse<Void>> createTransfer(@Valid @RequestBody CreateTransferRequest request) {
         transactionService.createTransfer(request);
 
+        return new ResponseEntity<>(ApiResponse.success(null), HttpStatus.NO_CONTENT);
+    }
+
+    @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<AttachmentResponse>> uploadAttachment(
+            @PathVariable UUID id,
+            @RequestParam("file") MultipartFile file) {
+
+        Attachment attachment = transactionService.addAttachmentToTransaction(id, file);
+
+        return new ResponseEntity<>(
+                ApiResponse.success(attachmentMapper.toDto(attachment)),
+                HttpStatus.CREATED
+        );
+    }
+
+    @DeleteMapping("/{transactionId}/attachments/{attachmentId}")
+    public ResponseEntity<ApiResponse<Void>> deleteAttachment(
+            @PathVariable UUID transactionId,
+            @PathVariable UUID attachmentId) {
+
+        transactionService.deleteAttachment(transactionId, attachmentId);
         return new ResponseEntity<>(ApiResponse.success(null), HttpStatus.NO_CONTENT);
     }
 }

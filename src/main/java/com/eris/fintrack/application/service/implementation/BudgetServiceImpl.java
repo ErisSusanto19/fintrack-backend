@@ -64,6 +64,19 @@ public class BudgetServiceImpl implements BudgetService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Budget findById(UUID budgetId) {
+        User currentUser = userContextService.getCurrentUser();
+        Budget budget = budgetRepository.findById(budgetId)
+                .orElseThrow(() -> new ResourceNotFoundException("Budget not found"));
+
+        if (!budget.getUser().getId().equals(currentUser.getId())) {
+            throw new ForbiddenException("Access Denied: You do not own this budget");
+        }
+        return budget;
+    }
+
+    @Override
     @Transactional
     public void deleteBudget(UUID budgetId) {
         User currentUser = userContextService.getCurrentUser();

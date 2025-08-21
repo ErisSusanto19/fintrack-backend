@@ -40,6 +40,12 @@ public class CategoryController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<CategoryResponse>> findCategoryById(@PathVariable UUID id) {
+        Category category = categoryService.findById(id);
+        return ResponseEntity.ok(ApiResponse.success(categoryMapper.toDto(category)));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteCategory(@PathVariable UUID id) {
         categoryService.deleteCategoryById(id);

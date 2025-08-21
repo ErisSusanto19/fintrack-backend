@@ -3,24 +3,28 @@ package com.eris.fintrack.application.service.implementation;
 import com.eris.fintrack.api.exception.BadRequestException;
 import com.eris.fintrack.api.exception.ForbiddenException;
 import com.eris.fintrack.api.exception.ResourceNotFoundException;
+import com.eris.fintrack.api.mapper.TransactionMapper;
 import com.eris.fintrack.api.transaction.dto.CreateTransactionRequest;
 import com.eris.fintrack.api.transaction.dto.CreateTransferRequest;
+import com.eris.fintrack.api.transaction.dto.TransactionResponse;
 import com.eris.fintrack.api.transaction.dto.UpdateTransactionRequest;
 import com.eris.fintrack.application.service.TransactionService;
+import com.eris.fintrack.application.service.storage.FileStorageService;
 import com.eris.fintrack.domain.*;
 import com.eris.fintrack.domain.enums.TransactionType;
-import com.eris.fintrack.infrastructure.persistence.AccountRepository;
-import com.eris.fintrack.infrastructure.persistence.BudgetRepository;
-import com.eris.fintrack.infrastructure.persistence.CategoryRepository;
-import com.eris.fintrack.infrastructure.persistence.TransactionRepository;
+import com.eris.fintrack.infrastructure.persistence.*;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.Hibernate;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -37,6 +41,8 @@ public class TransactionServiceImpl implements TransactionService {
     private final UserContextService userContextService;
     private final BudgetRepository budgetRepository;
     private final CacheManager cacheManager;
+    private final FileStorageService fileStorageService;
+    private final AttachmentRepository attachmentRepository;
 
     @Override
     @Transactional
@@ -58,6 +64,20 @@ public class TransactionServiceImpl implements TransactionService {
     public Page<Transaction> getTransactionsForCurrentUser(Pageable pageable) {
         User currentUser = userContextService.getCurrentUser();
         return transactionRepository.findByUserId(currentUser.getId(), pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Transaction findById(UUID transactionId) {
+        User currentUser = userContextService.getCurrentUser();
+        Transaction transaction = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found"));
+
+        if (!transaction.getUser().getId().equals(currentUser.getId())) {
+            throw new ForbiddenException("Access Denied to this transaction");
+        }
+
+        return transaction;
     }
 
     @Override
@@ -200,6 +220,76 @@ public class TransactionServiceImpl implements TransactionService {
 
         transactionRepository.save(expenseTransaction);
         transactionRepository.save(incomeTransaction);
+    }
+
+    @Override
+    @Transactional
+    public Attachment addAttachmentToTransaction(UUID transactionId, MultipartFile file) {
+        User currentUser = userContextService.getCurrentUser();
+
+        Transaction transaction = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found"));
+        if (!transaction.getUser().getId().equals(currentUser.getId())) {
+            throw new ForbiddenException("Access Denied");
+        }
+
+        String subDirectory = currentUser.getId().toString();
+        String storageKey = fileStorageService.save(file, subDirectory);
+
+        Attachment attachment = Attachment.builder()
+                .transaction(transaction)
+                .fileName(StringUtils.cleanPath(file.getOriginalFilename()))
+                .mimeType(file.getContentType())
+                .size(file.getSize())
+                .storageKey(storageKey)
+                .build();
+
+        return attachmentRepository.save(attachment);
+    }
+
+    @Override
+    public Attachment getAttachmentMetadata(UUID transactionId, UUID attachmentId) {
+        User currentUser = userContextService.getCurrentUser();
+
+        Transaction transaction = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found"));
+        if (!transaction.getUser().getId().equals(currentUser.getId())) {
+            throw new ForbiddenException("Access Denied to this transaction");
+        }
+
+        return transaction.getAttachments().stream()
+                .filter(att -> att.getId().equals(attachmentId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Attachment not found"));
+    }
+
+    @Override
+    public Resource getAttachmentResource(UUID transactionId, UUID attachmentId) {
+        Attachment attachment = getAttachmentMetadata(transactionId, attachmentId);
+        return fileStorageService.load(attachment.getStorageKey());
+    }
+
+    @Override
+    @Transactional
+    public void deleteAttachment(UUID transactionId, UUID attachmentId) {
+        User currentUser = userContextService.getCurrentUser();
+
+        Transaction transaction = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found"));
+        if (!transaction.getUser().getId().equals(currentUser.getId())) {
+            throw new ForbiddenException("Access Denied to this transaction");
+        }
+
+        Attachment attachment = transaction.getAttachments().stream()
+                .filter(att -> att.getId().equals(attachmentId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Attachment not found"));
+
+        fileStorageService.delete(attachment.getStorageKey());
+
+        transaction.getAttachments().remove(attachment);
+
+        attachmentRepository.delete(attachment);
     }
 
     private Transaction createTransactionForUser(CreateTransactionRequest request, User user){

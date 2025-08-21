@@ -9,5 +9,6 @@ import java.util.UUID;
 public interface CategoryService {
     Category createCategory(CreateUpdateCategoryRequest request);
     List<Category> getAllCategoriesForCurrentUser();
+    Category findById(UUID categoryId);
     void deleteCategoryById(UUID categoryId);
 }

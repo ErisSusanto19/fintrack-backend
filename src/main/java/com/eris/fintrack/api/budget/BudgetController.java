@@ -41,6 +41,12 @@ public class BudgetController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<BudgetResponse>> findBudgetById(@PathVariable UUID id) {
+        Budget budget = budgetService.findById(id);
+        return ResponseEntity.ok(ApiResponse.success(budgetMapper.toDto(budget)));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteBudget(@PathVariable UUID id) {
         budgetService.deleteBudget(id);
