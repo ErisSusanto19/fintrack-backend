@@ -58,7 +58,8 @@ The system is built following the principles of a layered architecture, separati
 *   **Build Tool**: Maven
 
 ### 2.3. Project Structure
-The project structure reflects the layered architecture:```
+The project structure reflects the layered architecture:
+```
 com.eris.fintrack
 ├─ api/                 # Controllers, DTOs, Mappers, Exceptions
 │  ├─ account/
