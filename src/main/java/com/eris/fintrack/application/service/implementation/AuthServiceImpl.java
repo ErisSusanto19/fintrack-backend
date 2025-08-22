@@ -6,6 +6,7 @@ import com.eris.fintrack.api.auth.dto.RefreshTokenRequest;
 import com.eris.fintrack.api.auth.dto.RegisterRequest;
 import com.eris.fintrack.api.exception.BadRequestException;
 import com.eris.fintrack.api.exception.ResourceNotFoundException;
+import com.eris.fintrack.api.mapper.UserMapper;
 import com.eris.fintrack.application.service.AuthService;
 import com.eris.fintrack.application.service.RefreshTokenService;
 import com.eris.fintrack.domain.RefreshToken;
@@ -38,6 +39,7 @@ public class AuthServiceImpl implements AuthService {
     private final UserDetailsService userDetailsService;
     private final RoleRepository roleRepository;
     private final RefreshTokenService refreshTokenService;
+    private final UserMapper userMapper;
 
     @Override
     @Transactional
@@ -56,7 +58,7 @@ public class AuthServiceImpl implements AuthService {
                 .roles(Set.of(userRole))
                 .build();
 
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
 
         var userDetails = new org.springframework.security.core.userdetails.User(
                 user.getEmail(),
@@ -72,6 +74,7 @@ public class AuthServiceImpl implements AuthService {
         return AuthResponse.builder()
                 .accessToken(jwtToken)
                 .refreshToken(refreshToken.getToken())
+                .user(userMapper.toDto(savedUser))
                 .build();
     }
 
@@ -84,6 +87,9 @@ public class AuthServiceImpl implements AuthService {
                 )
         );
 
+        User user = userRepository.findByEmail(loginRequest.getEmail())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
         var userDetails = userDetailsService.loadUserByUsername(loginRequest.getEmail());
         var jwtToken = jwtService.generateToken(userDetails);
         var refreshToken = refreshTokenService.createRefreshToken(loginRequest.getEmail());
@@ -91,6 +97,7 @@ public class AuthServiceImpl implements AuthService {
         return AuthResponse.builder()
                 .accessToken(jwtToken)
                 .refreshToken(refreshToken.getToken())
+                .user(userMapper.toDto(user))
                 .build();
     }
 
