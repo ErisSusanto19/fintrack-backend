@@ -1,5 +1,6 @@
 package com.eris.fintrack.infrastructure.scheduler;
 
+import com.eris.fintrack.api.transaction.dto.CreateTransactionRequest;
 import com.eris.fintrack.application.service.TransactionService;
 import com.eris.fintrack.domain.Account;
 import com.eris.fintrack.domain.Category;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -19,8 +21,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -64,11 +65,19 @@ class TransactionSchedulerTest {
     void processSingleRecurring_shouldCreateTransaction_onValidDay() {
 
         transactionScheduler.processSingleRecurring(recurring, today);
+        ArgumentCaptor<CreateTransactionRequest> requestCaptor = ArgumentCaptor.forClass(CreateTransactionRequest.class);
 
         verify(transactionService, times(1)).createTransactionFromScheduler(any(), any());
+        verify(transactionService, times(1)).createTransactionFromScheduler(requestCaptor.capture(), any(User.class));
+
+        CreateTransactionRequest capturedRequest = requestCaptor.getValue();
+
+        assertNotNull(capturedRequest);
+        assertEquals(recurring.getAccount().getId(), capturedRequest.getAccountId());
+        assertEquals(recurring.getAmount(), capturedRequest.getAmount());
+        assertEquals(today, capturedRequest.getTransactionDate());
 
         assertEquals(today, recurring.getLastExecutionDate());
-
         verify(recurringTransactionRepository, times(1)).save(recurring);
     }
 
@@ -110,4 +119,5 @@ class TransactionSchedulerTest {
 
         verify(transactionService, never()).createTransactionFromScheduler(any(), any());
     }
+
 }

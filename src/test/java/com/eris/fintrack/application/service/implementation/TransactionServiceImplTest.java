@@ -5,15 +5,10 @@ import com.eris.fintrack.api.exception.ForbiddenException;
 import com.eris.fintrack.api.exception.ResourceNotFoundException;
 import com.eris.fintrack.api.transaction.dto.CreateTransactionRequest;
 import com.eris.fintrack.api.transaction.dto.UpdateTransactionRequest;
-import com.eris.fintrack.domain.Account;
-import com.eris.fintrack.domain.Category;
-import com.eris.fintrack.domain.Transaction;
-import com.eris.fintrack.domain.User;
+import com.eris.fintrack.application.service.storage.FileStorageService;
+import com.eris.fintrack.domain.*;
 import com.eris.fintrack.domain.enums.TransactionType;
-import com.eris.fintrack.infrastructure.persistence.AccountRepository;
-import com.eris.fintrack.infrastructure.persistence.BudgetRepository;
-import com.eris.fintrack.infrastructure.persistence.CategoryRepository;
-import com.eris.fintrack.infrastructure.persistence.TransactionRepository;
+import com.eris.fintrack.infrastructure.persistence.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,6 +16,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import org.springframework.mock.web.MockMultipartFile;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -44,6 +42,15 @@ class TransactionServiceImplTest {
     private BudgetRepository budgetRepository;
     @Mock
     private UserContextService userContextService;
+
+    @Mock
+    private AttachmentRepository attachmentRepository;
+    @Mock
+    private FileStorageService fileStorageService;
+    @Mock
+    private CacheManager cacheManager;
+    @Mock
+    private Cache cache;
 
     @InjectMocks
     private TransactionServiceImpl transactionService;
@@ -85,7 +92,7 @@ class TransactionServiceImplTest {
         when(budgetRepository.findByUserIdAndCategoryIdAndYearAndMonth(any(), any(), anyInt(), anyInt()))
                 .thenReturn(Optional.empty());
         when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
+        when(cacheManager.getCache(anyString())).thenReturn(cache);
 
         Transaction result = transactionService.createTransaction(createRequest);
 
@@ -97,6 +104,7 @@ class TransactionServiceImplTest {
 
         verify(accountRepository, times(1)).save(testAccount);
         verify(transactionRepository, times(1)).save(any(Transaction.class));
+        verify(cache, times(1)).clear();
     }
 
     @Test
@@ -114,6 +122,7 @@ class TransactionServiceImplTest {
 
         when(transactionRepository.sumExpensesByUserIdAndCategoryAndDateRange(any(), any(), any(), any()))
                 .thenReturn(new BigDecimal("10.00"));
+        when(cacheManager.getCache(anyString())).thenReturn(cache);
 
         BadRequestException exception = assertThrows(BadRequestException.class, () -> {
             transactionService.createTransaction(createRequest);
@@ -124,6 +133,7 @@ class TransactionServiceImplTest {
         assertEquals(0, new BigDecimal("1000.00").compareTo(testAccount.getBalance()));
         verify(accountRepository, never()).save(any());
         verify(transactionRepository, never()).save(any());
+        verify(cache, times(1)).clear();
     }
 
     @Test
@@ -155,6 +165,7 @@ class TransactionServiceImplTest {
         testAccount.setBalance(new BigDecimal("900.00"));
 
         when(transactionRepository.findById(expenseTransaction.getId())).thenReturn(Optional.of(expenseTransaction));
+        when(cacheManager.getCache(anyString())).thenReturn(cache);
 
         transactionService.deleteTransaction(expenseTransaction.getId());
 
@@ -162,6 +173,7 @@ class TransactionServiceImplTest {
 
         verify(transactionRepository, times(1)).delete(expenseTransaction);
         verify(accountRepository, times(1)).save(testAccount);
+        verify(cache, times(1)).clear();
     }
 
     @Test
@@ -189,6 +201,7 @@ class TransactionServiceImplTest {
                 .build();
 
         when(transactionRepository.findById(originalTransaction.getId())).thenReturn(Optional.of(originalTransaction));
+        when(cacheManager.getCache(anyString())).thenReturn(cache);
 
         UpdateTransactionRequest updateRequest = new UpdateTransactionRequest();
         updateRequest.setAccountId(testAccount.getId());
@@ -204,5 +217,57 @@ class TransactionServiceImplTest {
 
         verify(transactionRepository, times(1)).save(originalTransaction);
         verify(accountRepository, times(1)).save(testAccount);
+        verify(cache, times(1)).clear();
+    }
+
+    @Test
+    @DisplayName("addAttachmentToTransaction should save file and create metadata")
+    void addAttachmentToTransaction_shouldSucceed() {
+
+        UUID transactionId = UUID.randomUUID();
+        Transaction mockTransaction = new Transaction();
+        mockTransaction.setId(transactionId);
+        mockTransaction.setUser(testUser);
+
+        MockMultipartFile mockFile = new MockMultipartFile("file", "nota.jpg", "image/jpeg", "image".getBytes());
+        String expectedStorageKey = testUser.getId() + "/some-uuid.jpg";
+
+        when(transactionRepository.findById(transactionId)).thenReturn(Optional.of(mockTransaction));
+        when(fileStorageService.save(any(), anyString())).thenReturn(expectedStorageKey);
+        when(attachmentRepository.save(any(Attachment.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Attachment result = transactionService.addAttachmentToTransaction(transactionId, mockFile);
+
+        assertNotNull(result);
+        assertEquals(expectedStorageKey, result.getStorageKey());
+        assertTrue(mockTransaction.getAttachments().contains(result));
+        verify(attachmentRepository, times(1)).save(any());
+    }
+
+    @Test
+    @DisplayName("deleteAttachment should delete file, metadata, and clear caches")
+    void deleteAttachment_shouldSucceed() {
+        UUID transactionId = UUID.randomUUID();
+        UUID attachmentId = UUID.randomUUID();
+
+        Attachment mockAttachment = new Attachment();
+        mockAttachment.setId(attachmentId);
+        mockAttachment.setStorageKey("path/to/delete.jpg");
+
+        Transaction mockTransaction = new Transaction();
+        mockTransaction.setId(transactionId);
+        mockTransaction.setUser(testUser);
+        mockTransaction.getAttachments().add(mockAttachment);
+        mockAttachment.setTransaction(mockTransaction);
+
+        when(transactionRepository.findById(transactionId)).thenReturn(Optional.of(mockTransaction));
+        when(cacheManager.getCache(anyString())).thenReturn(cache);
+
+        transactionService.deleteAttachment(transactionId, attachmentId);
+
+        verify(fileStorageService, times(1)).delete("path/to/delete.jpg");
+        verify(attachmentRepository, times(1)).delete(mockAttachment);
+        assertTrue(mockTransaction.getAttachments().isEmpty());
+        verify(cache, times(1)).clear();
     }
 }

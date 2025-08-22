@@ -244,6 +244,10 @@ public class TransactionServiceImpl implements TransactionService {
                 .storageKey(storageKey)
                 .build();
 
+        transaction.getAttachments().add(attachment);
+
+        transactionRepository.save(transaction);
+
         return attachmentRepository.save(attachment);
     }
 
@@ -272,6 +276,7 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     @Transactional
     public void deleteAttachment(UUID transactionId, UUID attachmentId) {
+        clearReportCaches();
         User currentUser = userContextService.getCurrentUser();
 
         Transaction transaction = transactionRepository.findById(transactionId)

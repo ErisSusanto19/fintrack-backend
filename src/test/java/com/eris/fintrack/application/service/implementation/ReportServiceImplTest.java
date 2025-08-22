@@ -1,5 +1,6 @@
 package com.eris.fintrack.application.service.implementation;
 
+import com.eris.fintrack.api.report.dto.CashFlowTrendItem;
 import com.eris.fintrack.api.report.dto.CategoryBreakdownResponse;
 import com.eris.fintrack.api.report.dto.CategoryBreakdownRow;
 import com.eris.fintrack.api.report.dto.ReportOverviewResponse;
@@ -13,6 +14,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -22,9 +25,8 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class ReportServiceImplTest {
@@ -34,6 +36,12 @@ class ReportServiceImplTest {
 
     @Mock
     private UserContextService userContextService;
+
+    @Mock
+    private CacheManager cacheManager;
+
+    @Mock
+    private Cache cache;
 
     @InjectMocks
     private ReportServiceImpl reportService;
@@ -132,5 +140,104 @@ class ReportServiceImplTest {
 
         assertNotNull(result);
         assertTrue(result.isEmpty());
+    }
+
+    @Test
+    @DisplayName("getCategoryBreakdown should fetch from DB and put into cache when cache is empty")
+    void getCategoryBreakdown_shouldQueryDbAndCache_whenCacheIsEmpty() {
+        when(cacheManager.getCache("categoryBreakdown")).thenReturn( cache);
+        when(cache.get(anyString())).thenReturn(null);
+        when(transactionRepository.getCategoryBreakdown(any(), any(), any())).thenReturn(Collections.emptyList());
+
+        reportService.getCategoryBreakdown(year, month);
+
+        verify(transactionRepository, times(1)).getCategoryBreakdown(any(), any(), any());
+        verify(cache, times(1)).put(anyString(), anyList());
+    }
+
+    @Test
+    @DisplayName("getCategoryBreakdown should return from cache and not query DB when cache is hit")
+    void getCategoryBreakdown_shouldReturnFromCache_whenCacheIsHit() {
+        when(cacheManager.getCache("categoryBreakdown")).thenReturn( cache);
+        List<CategoryBreakdownResponse> cachedData = List.of(
+                CategoryBreakdownResponse.builder().categoryName("Cached Food").build()
+        );
+
+        Cache.ValueWrapper cacheWrapper = () -> cachedData;
+
+        when(cache.get(anyString())).thenReturn(cacheWrapper);
+
+        List<CategoryBreakdownResponse> result = reportService.getCategoryBreakdown(year, month);
+
+        assertEquals("Cached Food", result.get(0).getCategoryName());
+
+        verify(transactionRepository, never()).getCategoryBreakdown(any(), any(), any());
+        verify(cache, never()).put(anyString(), anyList());
+    }
+
+    @Test
+    @DisplayName("getCashFlowTrend should return a full date range, filling gaps for days with no transactions")
+    void getCashFlowTrend_shouldFillDateGaps() {
+
+        LocalDate testStartDate = LocalDate.of(2025, 8, 1);
+        LocalDate testEndDate = LocalDate.of(2025, 8, 3);
+
+        List<CashFlowTrendItem> dbResults = List.of(
+                new CashFlowTrendItem(
+                        LocalDate.of(2025, 8, 1),
+                        new BigDecimal("1000"),
+                        new BigDecimal("100")
+                ),
+                new CashFlowTrendItem(
+                        LocalDate.of(2025, 8, 3),
+                        BigDecimal.ZERO,
+                        new BigDecimal("200")
+                )
+        );
+
+        when(transactionRepository.getCashFlowTrend(
+                eq(testUser.getId()), eq(testStartDate), eq(testEndDate)))
+                .thenReturn(dbResults);
+
+        List<CashFlowTrendItem> result = reportService.getCashFlowTrend(testStartDate, testEndDate);
+
+        assertNotNull(result);
+        assertEquals(3, result.size());
+
+        assertEquals(LocalDate.of(2025, 8, 1), result.get(0).date());
+        assertEquals(0, new BigDecimal("1000").compareTo(result.get(0).income()));
+
+        assertEquals(LocalDate.of(2025, 8, 2), result.get(1).date());
+        assertEquals(0, BigDecimal.ZERO.compareTo(result.get(1).income()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(result.get(1).expense()));
+
+        assertEquals(LocalDate.of(2025, 8, 3), result.get(2).date());
+        assertEquals(0, new BigDecimal("200").compareTo(result.get(2).expense()));
+    }
+
+    @Test
+    @DisplayName("getCashFlowTrend should return a full date range of zeros if no transactions exist")
+    void getCashFlowTrend_shouldReturnAllZeros_whenNoTransactions() {
+
+        LocalDate testStartDate = LocalDate.of(2025, 9, 1);
+        LocalDate testEndDate = LocalDate.of(2025, 9, 2);
+
+        when(transactionRepository.getCashFlowTrend(
+                eq(testUser.getId()), eq(testStartDate), eq(testEndDate)))
+                .thenReturn(Collections.emptyList());
+
+
+        List<CashFlowTrendItem> result = reportService.getCashFlowTrend(testStartDate, testEndDate);
+
+        assertNotNull(result);
+        assertEquals(2, result.size());
+
+        assertEquals(LocalDate.of(2025, 9, 1), result.get(0).date());
+        assertEquals(0, BigDecimal.ZERO.compareTo(result.get(0).income()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(result.get(0).expense()));
+
+        assertEquals(LocalDate.of(2025, 9, 2), result.get(1).date());
+        assertEquals(0, BigDecimal.ZERO.compareTo(result.get(1).income()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(result.get(1).expense()));
     }
 }

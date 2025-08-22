@@ -83,30 +83,32 @@ public class ReportServiceImpl implements ReportService {
         List<CategoryBreakdownRow> rows = transactionRepository.getCategoryBreakdown(
                 currentUser.getId(), startDate, endDate);
 
-        if (rows.isEmpty()) {
-            return Collections.emptyList();
+        List<CategoryBreakdownResponse> response;
+
+        if (!rows.isEmpty()) {
+            BigDecimal totalExpense = rows.stream()
+                    .map(CategoryBreakdownRow::totalAmount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            if (totalExpense.compareTo(BigDecimal.ZERO) > 0) {
+                response = rows.stream().map(row -> {
+                    BigDecimal percentage = row.totalAmount()
+                            .multiply(new BigDecimal("100"))
+                            .divide(totalExpense, 2, RoundingMode.HALF_UP);
+
+                    return CategoryBreakdownResponse.builder()
+                            .categoryId(row.categoryId())
+                            .categoryName(row.categoryName())
+                            .totalAmount(row.totalAmount())
+                            .percentage(percentage.doubleValue())
+                            .build();
+                }).collect(Collectors.toList());
+            } else {
+                response = Collections.emptyList();
+            }
+        } else {
+            response = Collections.emptyList();
         }
-
-        BigDecimal totalExpense = rows.stream()
-                .map(CategoryBreakdownRow::totalAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        if (totalExpense.compareTo(BigDecimal.ZERO) == 0) {
-            return Collections.emptyList();
-        }
-
-        List<CategoryBreakdownResponse> response = rows.stream().map(row -> {
-            BigDecimal percentage = row.totalAmount()
-                    .multiply(new BigDecimal("100"))
-                    .divide(totalExpense, 2, RoundingMode.HALF_UP);
-
-            return CategoryBreakdownResponse.builder()
-                    .categoryId(row.categoryId())
-                    .categoryName(row.categoryName())
-                    .totalAmount(row.totalAmount())
-                    .percentage(percentage.doubleValue())
-                    .build();
-        }).collect(Collectors.toList());
 
         if (cache != null) {
             cache.put(cacheKey, response);

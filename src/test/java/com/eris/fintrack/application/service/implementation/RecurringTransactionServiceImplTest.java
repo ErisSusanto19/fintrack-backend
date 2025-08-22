@@ -19,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -229,5 +230,21 @@ class RecurringTransactionServiceImplTest {
         assertTrue(exception.getMessage().contains("Invalid CRON expression format"));
 
         verify(recurringTransactionRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("findAllForCurrentUser should return a list of recurring transactions")
+    void findAllForCurrentUser_shouldSucceed() {
+
+        List<RecurringTransaction> mockList = List.of(new RecurringTransaction(), new RecurringTransaction());
+
+        when(recurringTransactionRepository.findByUserId(testUser.getId())).thenReturn(mockList);
+
+        List<RecurringTransaction> result = recurringTransactionService.findAllForCurrentUser();
+
+        assertNotNull(result);
+        assertEquals(2, result.size());
+
+        verify(recurringTransactionRepository, times(1)).findByUserId(testUser.getId());
     }
 }
