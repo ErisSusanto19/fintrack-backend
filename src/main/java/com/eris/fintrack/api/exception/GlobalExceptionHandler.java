@@ -3,6 +3,7 @@ package com.eris.fintrack.api.exception;
 import com.eris.fintrack.api.common.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -34,6 +35,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiResponse<Void>> handleIllegalArgumentException(IllegalArgumentException ex) {
         return new ResponseEntity<>(ApiResponse.error("INVALID_ARGUMENT", ex.getMessage()), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBadCredentials(BadCredentialsException ex) {
+        return new ResponseEntity<>(
+                ApiResponse.error("INVALID_CREDENTIALS", "Invalid username or password."),
+                HttpStatus.UNAUTHORIZED
+        );
     }
 
     @ExceptionHandler(Exception.class)
