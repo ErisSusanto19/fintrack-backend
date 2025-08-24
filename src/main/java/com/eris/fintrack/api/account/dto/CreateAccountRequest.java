@@ -8,7 +8,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 
 import java.math.BigDecimal;
 
-public class CreateUpdateAccountRequest {
+public class CreateAccountRequest {
     @NotBlank(message = "Account name is required")
     private String name;
 

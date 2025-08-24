@@ -1,6 +1,7 @@
 package com.eris.fintrack.application.service.implementation;
 
-import com.eris.fintrack.api.account.dto.CreateUpdateAccountRequest;
+import com.eris.fintrack.api.account.dto.CreateAccountRequest;
+import com.eris.fintrack.api.account.dto.UpdateAccountRequest;
 import com.eris.fintrack.api.exception.ForbiddenException;
 import com.eris.fintrack.api.exception.ResourceNotFoundException;
 import com.eris.fintrack.application.service.AccountService;
@@ -24,7 +25,7 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     @Transactional
-    public Account createAccount(CreateUpdateAccountRequest request) {
+    public Account createAccount(CreateAccountRequest request) {
         User currentUser = userContextService.getCurrentUser();
         AccountType type = AccountType.valueOf(request.getType().toUpperCase());
 
@@ -63,5 +64,16 @@ public class AccountServiceImpl implements AccountService {
     public void deleteAccountById(UUID accountId) {
         Account accountToDelete = getAccountById(accountId);
         accountRepository.delete(accountToDelete);
+    }
+
+    @Override
+    @Transactional
+    public Account updateAccount(UUID accountId, UpdateAccountRequest request) {
+        Account accountToUpdate = this.getAccountById(accountId);
+
+        accountToUpdate.setName(request.getName());
+        accountToUpdate.setType(AccountType.valueOf(request.getType().toUpperCase()));
+
+        return accountRepository.save(accountToUpdate);
     }
 }

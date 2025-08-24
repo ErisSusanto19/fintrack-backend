@@ -1,7 +1,8 @@
 package com.eris.fintrack.api.account;
 
 import com.eris.fintrack.api.account.dto.AccountResponse;
-import com.eris.fintrack.api.account.dto.CreateUpdateAccountRequest;
+import com.eris.fintrack.api.account.dto.CreateAccountRequest;
+import com.eris.fintrack.api.account.dto.UpdateAccountRequest;
 import com.eris.fintrack.api.common.ApiResponse;
 import com.eris.fintrack.api.mapper.AccountMapper;
 import com.eris.fintrack.application.service.AccountService;
@@ -25,7 +26,7 @@ public class AccountController {
     private final AccountMapper accountMapper;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<AccountResponse>> createAccount(@Valid @RequestBody CreateUpdateAccountRequest request) {
+    public ResponseEntity<ApiResponse<AccountResponse>> createAccount(@Valid @RequestBody CreateAccountRequest request) {
         Account createdAccount = accountService.createAccount(request);
         AccountResponse responseDto = accountMapper.toDto(createdAccount);
         return new ResponseEntity<>(ApiResponse.success(responseDto), HttpStatus.CREATED);
@@ -50,5 +51,14 @@ public class AccountController {
     public ResponseEntity<ApiResponse<Void>> deleteAccount(@PathVariable UUID id) {
         accountService.deleteAccountById(id);
         return new ResponseEntity<>(ApiResponse.success(null), HttpStatus.NO_CONTENT);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<AccountResponse>> updateAccount(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateAccountRequest request) {
+
+        Account updatedAccount = accountService.updateAccount(id, request);
+        return ResponseEntity.ok(ApiResponse.success(accountMapper.toDto(updatedAccount)));
     }
 }
