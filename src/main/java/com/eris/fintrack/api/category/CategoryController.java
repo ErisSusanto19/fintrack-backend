@@ -1,7 +1,8 @@
 package com.eris.fintrack.api.category;
 
 import com.eris.fintrack.api.category.dto.CategoryResponse;
-import com.eris.fintrack.api.category.dto.CreateUpdateCategoryRequest;
+import com.eris.fintrack.api.category.dto.CreateCategoryRequest;
+import com.eris.fintrack.api.category.dto.UpdateCategoryRequest;
 import com.eris.fintrack.api.common.ApiResponse;
 import com.eris.fintrack.api.mapper.CategoryMapper;
 import com.eris.fintrack.application.service.CategoryService;
@@ -25,7 +26,7 @@ public class CategoryController {
     private final CategoryMapper categoryMapper;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<CategoryResponse>> createCategory(@Valid @RequestBody CreateUpdateCategoryRequest request) {
+    public ResponseEntity<ApiResponse<CategoryResponse>> createCategory(@Valid @RequestBody CreateCategoryRequest request) {
         Category createdCategory = categoryService.createCategory(request);
         CategoryResponse responseDto = categoryMapper.toDto(createdCategory);
         return new ResponseEntity<>(ApiResponse.success(responseDto), HttpStatus.CREATED);
@@ -50,5 +51,11 @@ public class CategoryController {
     public ResponseEntity<ApiResponse<Void>> deleteCategory(@PathVariable UUID id) {
         categoryService.deleteCategoryById(id);
         return new ResponseEntity<>(ApiResponse.success(null), HttpStatus.NO_CONTENT);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<CategoryResponse>> updateCategory(@PathVariable UUID id, @Valid @RequestBody UpdateCategoryRequest request){
+        Category updatedCategory = categoryService.updateCategory(id, request);
+        return ResponseEntity.ok(ApiResponse.success(categoryMapper.toDto(updatedCategory)));
     }
 }

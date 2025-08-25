@@ -1,6 +1,7 @@
 package com.eris.fintrack.application.service.implementation;
 
-import com.eris.fintrack.api.category.dto.CreateUpdateCategoryRequest;
+import com.eris.fintrack.api.category.dto.CreateCategoryRequest;
+import com.eris.fintrack.api.category.dto.UpdateCategoryRequest;
 import com.eris.fintrack.api.exception.ForbiddenException;
 import com.eris.fintrack.api.exception.ResourceNotFoundException;
 import com.eris.fintrack.application.service.CategoryService;
@@ -24,7 +25,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional
-    public Category createCategory(CreateUpdateCategoryRequest request) {
+    public Category createCategory(CreateCategoryRequest request) {
         User currentUser = userContextService.getCurrentUser();
         TransactionType type = TransactionType.valueOf(request.getType().toUpperCase());
 
@@ -69,5 +70,14 @@ public class CategoryServiceImpl implements CategoryService {
         }
 
         categoryRepository.delete(category);
+    }
+
+    @Override
+    public Category updateCategory(UUID categoryId, UpdateCategoryRequest request){
+        Category categoryToUpdate = this.findById(categoryId);
+
+        categoryToUpdate.setName(request.getName());
+
+        return categoryRepository.save(categoryToUpdate);
     }
 }
