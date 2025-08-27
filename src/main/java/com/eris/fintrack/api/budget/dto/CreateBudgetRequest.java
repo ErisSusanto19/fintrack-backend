@@ -7,7 +7,7 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 @Data
-public class CreateUpdateBudgetRequest {
+public class CreateBudgetRequest {
 
     private UUID categoryId;
 

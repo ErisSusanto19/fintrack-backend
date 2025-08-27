@@ -1,7 +1,8 @@
 package com.eris.fintrack.api.budget;
 
 import com.eris.fintrack.api.budget.dto.BudgetResponse;
-import com.eris.fintrack.api.budget.dto.CreateUpdateBudgetRequest;
+import com.eris.fintrack.api.budget.dto.CreateBudgetRequest;
+import com.eris.fintrack.api.budget.dto.UpdateBudgetRequest;
 import com.eris.fintrack.api.common.ApiResponse;
 import com.eris.fintrack.api.mapper.BudgetMapper;
 import com.eris.fintrack.application.service.BudgetService;
@@ -25,7 +26,7 @@ public class BudgetController {
     private final BudgetMapper budgetMapper;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<BudgetResponse>> createBudget(@Valid @RequestBody CreateUpdateBudgetRequest request) {
+    public ResponseEntity<ApiResponse<BudgetResponse>> createBudget(@Valid @RequestBody CreateBudgetRequest request) {
         Budget budget = budgetService.createBudget(request);
         return new ResponseEntity<>(ApiResponse.success(budgetMapper.toDto(budget)), HttpStatus.CREATED);
     }
@@ -34,22 +35,27 @@ public class BudgetController {
     public ResponseEntity<ApiResponse<List<BudgetResponse>>> getBudgets(
             @RequestParam int year,
             @RequestParam int month) {
-        List<Budget> budgets = budgetService.getBudgets(year, month);
-        List<BudgetResponse> response = budgets.stream()
-                .map(budgetMapper::toDto)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(ApiResponse.success(response));
+        List<BudgetResponse> budgets = budgetService.getBudgets(year, month);
+        return ResponseEntity.ok(ApiResponse.success(budgets));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<BudgetResponse>> findBudgetById(@PathVariable UUID id) {
-        Budget budget = budgetService.findById(id);
-        return ResponseEntity.ok(ApiResponse.success(budgetMapper.toDto(budget)));
+        BudgetResponse budget = budgetService.findBudgetWithStatusById(id);
+        return ResponseEntity.ok(ApiResponse.success(budget));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteBudget(@PathVariable UUID id) {
         budgetService.deleteBudget(id);
         return new ResponseEntity<>(ApiResponse.success(null), HttpStatus.NO_CONTENT);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<BudgetResponse>> updateBudget(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateBudgetRequest request) {
+        Budget updatedBudget = budgetService.updateBudget(id, request);
+        return ResponseEntity.ok(ApiResponse.success(budgetMapper.toDto(updatedBudget)));
     }
 }

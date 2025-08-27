@@ -15,4 +15,7 @@ public class BudgetResponse {
     private int year;
     private int month;
     private BigDecimal amountLimit;
+    private BigDecimal amountSpent;
+    private BigDecimal remainingAmount;
+    private double percentageSpent;
 }
