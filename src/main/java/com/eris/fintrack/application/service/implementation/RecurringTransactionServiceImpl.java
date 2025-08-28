@@ -3,7 +3,9 @@ package com.eris.fintrack.application.service.implementation;
 import com.eris.fintrack.api.exception.BadRequestException;
 import com.eris.fintrack.api.exception.ForbiddenException;
 import com.eris.fintrack.api.exception.ResourceNotFoundException;
+import com.eris.fintrack.api.mapper.RecurringTransactionMapper;
 import com.eris.fintrack.api.recurring.dto.CreateRecurringTransactionRequest;
+import com.eris.fintrack.api.recurring.dto.RecurringTransactionResponse;
 import com.eris.fintrack.api.recurring.dto.UpdateRecurringTransactionRequest;
 import com.eris.fintrack.application.service.RecurringTransactionService;
 import com.eris.fintrack.domain.*;
@@ -13,8 +15,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +29,7 @@ public class RecurringTransactionServiceImpl implements RecurringTransactionServ
     private final AccountRepository accountRepository;
     private final CategoryRepository categoryRepository;
     private final UserContextService userContextService;
+    private final RecurringTransactionMapper recurringTransactionMapper;
 
     @Override
     @Transactional
@@ -56,9 +62,18 @@ public class RecurringTransactionServiceImpl implements RecurringTransactionServ
     }
 
     @Override
-    public List<RecurringTransaction> findAllForCurrentUser() {
+    public List<RecurringTransactionResponse> findAllForCurrentUser() {
         User currentUser = userContextService.getCurrentUser();
-        return recurringTransactionRepository.findByUserId(currentUser.getId());
+        return recurringTransactionRepository.findByUserId(currentUser.getId())
+                .stream()
+                .map(this::enrichWithNextExecutionDate)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public RecurringTransactionResponse findCompleteRecurringById(UUID id) {
+        RecurringTransaction recurring = this.findById(id);
+        return enrichWithNextExecutionDate(recurring);
     }
 
     @Override
@@ -98,5 +113,24 @@ public class RecurringTransactionServiceImpl implements RecurringTransactionServ
     public void delete(UUID id) {
         RecurringTransaction recurring = findById(id);
         recurringTransactionRepository.delete(recurring);
+    }
+
+    private RecurringTransactionResponse enrichWithNextExecutionDate(RecurringTransaction recurring) {
+        RecurringTransactionResponse dto = recurringTransactionMapper.toDto(recurring);
+
+        if (recurring.isActive()) {
+            try {
+                CronExpression cron = CronExpression.parse(recurring.getCronExpression());
+                LocalDateTime now = LocalDateTime.now();
+                LocalDateTime next = cron.next(now);
+                if (next != null) {
+                    dto.setNextExecutionDate(next.toLocalDate());
+                }
+            } catch (IllegalArgumentException e) {
+                dto.setNextExecutionDate(null);
+            }
+        }
+
+        return dto;
     }
 }

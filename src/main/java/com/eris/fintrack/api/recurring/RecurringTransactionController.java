@@ -33,17 +33,14 @@ public class RecurringTransactionController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<RecurringTransactionResponse>>> findAll() {
-        List<RecurringTransaction> all = recurringTransactionService.findAllForCurrentUser();
-        List<RecurringTransactionResponse> response = all.stream()
-                .map(recurringTransactionMapper::toDto)
-                .collect(Collectors.toList());
+        List<RecurringTransactionResponse> response = recurringTransactionService.findAllForCurrentUser();
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<RecurringTransactionResponse>> findById(@PathVariable UUID id) {
-        RecurringTransaction recurring = recurringTransactionService.findById(id);
-        return ResponseEntity.ok(ApiResponse.success(recurringTransactionMapper.toDto(recurring)));
+        RecurringTransactionResponse recurring = recurringTransactionService.findCompleteRecurringById(id);
+        return ResponseEntity.ok(ApiResponse.success(recurring));
     }
 
     @PutMapping("/{id}")

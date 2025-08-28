@@ -24,4 +24,6 @@ public class RecurringTransactionResponse {
     private String description;
     @JsonProperty("isActive")
     private boolean isActive;
+    private LocalDate lastExecutionDate;
+    private LocalDate nextExecutionDate;
 }
