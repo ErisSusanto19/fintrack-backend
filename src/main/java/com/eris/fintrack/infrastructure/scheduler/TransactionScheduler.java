@@ -10,9 +10,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Component
@@ -25,13 +27,12 @@ public class TransactionScheduler {
 
     // Format CRON: detik menit jam hari(bulan) bulan hari(minggu)
     @Scheduled(cron = "0 0 2 * * *")
-    @Transactional
     public void processRecurringTransactions() {
         log.info("Starting recurring transaction processing job...");
         LocalDate today = LocalDate.now();
 
         List<RecurringTransaction> candidates = recurringTransactionRepository
-                .findAllByIsActiveTrueAndStartDateLessThanEqual(today);
+                .findAllActiveWithDetails(today);
 
         for (RecurringTransaction recurring : candidates) {
             processSingleRecurring(recurring, today);
@@ -39,7 +40,7 @@ public class TransactionScheduler {
         log.info("Recurring transaction processing job finished.");
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void processSingleRecurring(RecurringTransaction recurring, LocalDate today) {
         try {
             if (recurring.getEndDate() != null && today.isAfter(recurring.getEndDate())) {
@@ -55,10 +56,16 @@ public class TransactionScheduler {
             }
 
             CronExpression cron = CronExpression.parse(recurring.getCronExpression());
-            LocalDate nextExecutionDate = cron.next(today.minusDays(1).atStartOfDay()).toLocalDate();
 
-            if (!nextExecutionDate.isEqual(today)) {
-                log.debug("Skipping recurring transaction {} as today is not its scheduled execution day.", recurring.getId());
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime referencePoint = (recurring.getLastExecutionDate() != null)
+                    ? recurring.getLastExecutionDate().atStartOfDay()
+                    : recurring.getStartDate().minusDays(1).atStartOfDay();
+
+            LocalDateTime nextExecutionTime = cron.next(referencePoint);
+
+            if (nextExecutionTime == null || now.isBefore(nextExecutionTime)) {
+                log.debug("Skipping recurring transaction {}. Next run is at {}", recurring.getId(), nextExecutionTime);
                 return;
             }
 
@@ -76,7 +83,7 @@ public class TransactionScheduler {
 
             transactionService.createTransactionFromScheduler(newTransaction, user);
 
-            recurring.setLastExecutionDate(today);
+            recurring.setLastExecutionDate(now.toLocalDate());
             recurringTransactionRepository.save(recurring);
 
             log.info("Successfully created transaction for recurring ID: {}", recurring.getId());
